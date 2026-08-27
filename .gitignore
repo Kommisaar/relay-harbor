@@ -1,0 +1,12 @@
+node_modules/
+dist/
+
+# Tauri / Rust
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 本地环境与编辑器
+*.local
+.DS_Store
+.idea/
+.vscode/

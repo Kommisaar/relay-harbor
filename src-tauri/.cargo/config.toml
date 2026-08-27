@@ -1,0 +1,11 @@
+# Windows 测试 exe 修复（tauri 已知问题 #11028/#13419）：
+# cargo test 的测试二进制没有嵌入 manifest，加载器解析到 System32 旧版 comctl32 (v5)，
+# 缺 TaskDialogIndirect 入口点 → STATUS_ENTRYPOINT_NOT_FOUND (0xC0000139)。
+# 链接期嵌入 Common-Controls v6 侧载依赖即可；主程序 bin 的 manifest 由 tauri-build 负责，
+# 内容兼容（同为 v6 依赖，mt.exe 会合并）。
+# 注意：删除本文件会让 Windows 上 cargo test 重新失败。
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-C", "link-arg=/MANIFEST:EMBED",
+    "-C", "link-arg=/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' publicKeyToken='6595b64144ccf1df' language='*' processorArchitecture='*'",
+]

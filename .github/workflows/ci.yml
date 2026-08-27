@@ -1,0 +1,39 @@
+# CON-008 CI 三件套 + CON-009 只读边界 + ADR-001 分层边界：
+# 前端（TS 最严 / dependency-cruiser 目录边界 / 依赖白名单）+ IPC 白名单 + Rust 分层检查 + cargo 质量。
+# RISK-004（编码 Agent 越界）的验证信号：本文件随脚手架首 commit 建立，保持绿色。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  rust:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: cargo fmt --all --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+        # 契约生成（CON-008）：测试内导出 tauri-specta 绑定，保持 src/api/generated 与后端一致

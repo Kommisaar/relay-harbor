@@ -1,0 +1,32 @@
+[package]
+name = "relay-harbor"
+version = "0.1.0"
+description = "RelayHarbor — AI 辅助开发工件管理（Agent 经 MCP 写入 + UI 只读 + Markdown 导出）"
+edition = "2021"
+
+# 分层边界（ADR-001/008）由 scripts/check-rust-boundaries.mjs 在 CI 强制：
+#   domain 禁 tauri/sqlx/axum；services 禁 tauri/sqlx/axum；
+#   infra → domain；interfaces → services/infra/domain；state.rs 组合根。
+# sqlx/axum/tokio 等随对应实现任务引入，本脚手架不预置未用依赖（零投机）。
+
+# 仅桌面（CON-005 Windows 优先、无移动端计划）：rlib 足够；
+# 官方模板的 staticlib/cdylib 为移动端预留，且在 Windows 上导致测试 exe 链接失败。
+[lib]
+name = "relay_harbor_lib"
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+specta = "=2.0.0-rc.22"
+specta-typescript = "0.0.9"
+tauri = { version = "2", features = [] }
+tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+strip = true

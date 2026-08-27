@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "CON-008/ADR-007 依赖白名单：npm install 的包必须先进入本名单。",
+    "禁 Fluent v8（@fluentui/react）、禁 Tailwind、禁编辑器（CodeMirror）、禁 dnd、@xyflow 待 M2。",
+    "Rust 依赖由分层边界检查（scripts/check-rust-boundaries.mjs）与实现任务约束。"
+  ],
+  "dependencies": [
+    "@fluentui/react-components",
+    "@fluentui/react-icons",
+    "@tanstack/react-query",
+    "@tauri-apps/api",
+    "react",
+    "react-dom",
+    "react-markdown",
+    "react-router-dom",
+    "zustand"
+  ],
+  "devDependencies": [
+    "@tauri-apps/cli",
+    "@types/react",
+    "@types/react-dom",
+    "@vitejs/plugin-react",
+    "dependency-cruiser",
+    "typescript",
+    "vite"
+  ]
+}

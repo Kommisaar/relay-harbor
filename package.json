@@ -1,0 +1,38 @@
+{
+  "name": "relay-harbor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "typecheck": "tsc --noEmit",
+    "lint:deps": "depcruise src --config .dependency-cruiser.cjs",
+    "lint:whitelist": "node scripts/check-dependency-whitelist.mjs",
+    "lint:ipc": "node scripts/check-ipc-whitelist.mjs",
+    "lint:rust-boundaries": "node scripts/check-rust-boundaries.mjs",
+    "check": "npm run typecheck && npm run lint:deps && npm run lint:whitelist && npm run lint:ipc && npm run lint:rust-boundaries"
+  },
+  "dependencies": {
+    "@fluentui/react-components": "^9.56.0",
+    "@fluentui/react-icons": "^2.0.270",
+    "@tanstack/react-query": "^5.66.0",
+    "@tauri-apps/api": "^2.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.2.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.0",
+    "dependency-cruiser": "^16.10.0",
+    "typescript": "^5.8.0",
+    "vite": "^6.3.0"
+  }
+}

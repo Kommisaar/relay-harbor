@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "主窗口默认能力：核心 + 事件（data-changed 监听需要 core:event）",
+  "windows": ["main"],
+  "permissions": ["core:default", "core:event:default"]
+}

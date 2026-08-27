@@ -1,0 +1,38 @@
+{
+  "$comment": [
+    "INT-001 IPC 命令完整白名单（docs/design/05-detailed-design/api-contracts.md）。",
+    "CON-009/ADR-006：业务写命令名单为空——名单内的 create/edit/delete/transition 等前缀一律禁止。",
+    "CI 断言：已注册命令 ⊆ 本名单；STRICT=1 时额外断言全等（M1 命令面完成后启用）。",
+    "app_version 为非业务信息命令（UI 关于页显示版本），不属 12 个业务只读命令。"
+  ],
+  "commands": [
+    "list_projects",
+    "get_project_state",
+    "list_items",
+    "get_item_detail",
+    "get_item_revisions",
+    "get_relations",
+    "get_task_board",
+    "search_items",
+    "get_impact",
+    "export_markdown",
+    "get_settings",
+    "set_settings",
+    "app_version"
+  ],
+  "forbiddenPrefixes": [
+    "create_",
+    "edit_",
+    "delete_",
+    "transition_",
+    "add_",
+    "remove_",
+    "import_",
+    "restore_",
+    "update_",
+    "write_",
+    "upsert_",
+    "insert_",
+    "save_"
+  ]
+}
