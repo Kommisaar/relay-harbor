@@ -70,7 +70,10 @@ MCP 协议层从同一批 Rust 类型导出。本文解释关键语义，不重�
 
 查询：`list_projects`、`get_project_state`、`list_items`（按类型/状态/
 过滤）、`get_item_detail`、`get_item_revisions`、`get_relations`、
-`get_task_board`、`search_items`、`get_impact`（影响定位）
+`get_task_board`、`search_items`、`get_impact`（影响定位）、
+`list_recent_revisions`（project_id, limit → 跨条目修订摘要倒序：
+display_code、标题、revision_no、actor、summary、changed_at；
+2026-08-28 界面设计新增，概览页最近修订支撑，UI-011/FR-018）
 导出：`export_markdown`（project_id, scope?, target_path）
 设置：`get_settings`、`set_settings`（仅应用设置，非业务数据）
 

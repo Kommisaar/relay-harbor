@@ -19,10 +19,11 @@
 | bridge 拉起链路 | 跨进程恢复语义与时限 | modules/bridge.md、seq-002 |
 | 写入全链路 | 原子性 + 事件顺序 | seq-001 |
 | 前端结构与失效约定 | query key 前缀是事件机制前提 | modules/frontend.md |
+| 界面结构与页面设计 | 9 页面 + 骨架，实现直接消费（2026-08-28 访谈定案） | ui/ |
 
-留给实现（不文档化）：托盘菜单与窗口细节、settings 项的读写、UI 组件
-树与样式、specta 具体配置、SQL 语句、错误文案、CI 脚本本身、zip 打包
-细节、MCP 协议层心跳参数。
+留给实现（不文档化）：托盘菜单与窗口细节、settings 项的读写、UI 视觉
+细节与组件树内部实现、specta 具体配置、SQL 语句、错误文案、CI 脚本
+本身、zip 打包细节、MCP 协议层心跳参数。
 
 ## 模块清单
 
@@ -43,6 +44,10 @@ seq-001 MCP 写入（ChangeSet 原子提交 + 事件发射）、seq-002 bridge
   [bridge](modules/bridge.md) ｜ [frontend](modules/frontend.md) ｜ [export](modules/export.md)
 - interactions/：[seq-001-mcp-write](interactions/seq-001-mcp-write.md) ｜
   [seq-002-bridge-bootstrap](interactions/seq-002-bridge-bootstrap.md)
+- ui/（2026-08-28 新增）：[界面设计总览](ui/README.md) ｜
+  [app-shell](ui/app-shell.md) ｜ [patterns](ui/patterns.md) ｜
+  pages/（project-list ｜ project-overview ｜ items ｜ item-detail ｜
+  tasks ｜ search ｜ export ｜ settings）
 
 ## 阻塞问题
 
