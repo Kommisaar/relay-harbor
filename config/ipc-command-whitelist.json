@@ -3,7 +3,8 @@
     "INT-001 IPC 命令完整白名单（docs/design/05-detailed-design/api-contracts.md）。",
     "CON-009/ADR-006：业务写命令名单为空——名单内的 create/edit/delete/transition 等前缀一律禁止。",
     "CI 断言：已注册命令 ⊆ 本名单；STRICT=1 时额外断言全等（M1 命令面完成后启用）。",
-    "app_version 为非业务信息命令（UI 关于页显示版本），不属 12 个业务只读命令。"
+    "app_version 为非业务信息命令（UI 关于页显示版本），不属 12 个业务只读命令。",
+    "2026-08-28 界面设计修订：+list_recent_revisions（FR-018 概览页，业务只读命令 12→13）。"
   ],
   "commands": [
     "list_projects",
@@ -15,6 +16,7 @@
     "get_task_board",
     "search_items",
     "get_impact",
+    "list_recent_revisions",
     "export_markdown",
     "get_settings",
     "set_settings",
