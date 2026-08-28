@@ -1,0 +1,279 @@
+// Mock 数据集（后端联调暂缓，2026-08-28）：结构与 api-contracts INT-001 契约一致，
+// 内容贴合本项目设计文档语境，供 UI 全量开发与走查。
+// 联调时整目录随 mock/commands.ts 移除。
+
+import type {
+  AnyStatus,
+  ItemType,
+  ItemDetail,
+  ProjectSummary,
+  RelationType,
+  Revision,
+  TaskCard,
+} from "../types";
+
+const NOW = Date.now();
+const minutesAgo = (m: number) => NOW - m * 60_000;
+const hoursAgo = (h: number) => NOW - h * 3_600_000;
+const daysAgo = (d: number) => NOW - d * 86_400_000;
+
+export interface MockProject {
+  summary: ProjectSummary;
+  items: ItemDetail[];
+  relations: { source: string; target: string; type: RelationType }[];
+  revisions: Revision[];
+}
+
+interface ItemSpec {
+  code: string;
+  title: string;
+  status?: AnyStatus;
+  revision?: number;
+  updated?: number;
+  supersededBy?: string;
+  metadata?: Record<string, string>;
+  body?: string;
+}
+
+function makeItem(projectId: string, spec: ItemSpec): ItemDetail {
+  const itemType = spec.code.split("-")[0] as ItemType;
+  return {
+    projectId,
+    code: spec.code,
+    itemType,
+    title: spec.title,
+    status: spec.status ?? "confirmed",
+    currentRevision: spec.revision ?? 1,
+    updatedAt: spec.updated ?? daysAgo(1),
+    supersededBy: spec.supersededBy ?? null,
+    bodyMd:
+      spec.body ??
+      [
+        `## 描述`,
+        ``,
+        `${spec.title}。本节为正文示例（Markdown 只读渲染，UC-011）。`,
+        ``,
+        `- 关键点一：数据库为唯一事实来源（OQ-001）`,
+        `- 关键点二：条目编号永不复用（BR-001）`,
+        ``,
+        `## 验收依据`,
+        ``,
+        `1. 内容与库中当前修订一致；`,
+        `2. 历史版本只读且与当时保存一致。`,
+      ].join("\n"),
+    metadata: spec.metadata ?? { priority: "P2" },
+    createdAt: spec.updated ? spec.updated - 86_400_000 * 7 : daysAgo(8),
+  };
+}
+
+const relayItems: ItemSpec[] = [
+  // FR 功能需求
+  { code: "FR-001", title: "Agent 经 MCP 写入设计资产", revision: 3, updated: minutesAgo(26), metadata: { priority: "P0" } },
+  { code: "FR-002", title: "项目创建与删除（MCP）", revision: 2, updated: daysAgo(2) },
+  { code: "FR-003", title: "条目创建与编辑产生修订", revision: 3, updated: hoursAgo(3) },
+  { code: "FR-004", title: "稳定编号分配", revision: 1, updated: daysAgo(6) },
+  { code: "FR-005", title: "条目状态迁移（MCP）", status: "in_review", revision: 2, updated: hoursAgo(6) },
+  { code: "FR-006", title: "关系建立与移除", revision: 1, updated: daysAgo(4) },
+  { code: "FR-007", title: "任务管理与状态迁移", status: "in_review", revision: 2, updated: hoursAgo(5) },
+  { code: "FR-008", title: "项目浏览与切换（UI）", revision: 2, updated: daysAgo(1) },
+  { code: "FR-009", title: "条目浏览与详情（UI）", revision: 2, updated: daysAgo(1) },
+  { code: "FR-010", title: "关联展开（UI）", revision: 1, updated: daysAgo(3) },
+  { code: "FR-011", title: "任务看板（只读 UI）", revision: 2, updated: daysAgo(1) },
+  { code: "FR-012", title: "关键词搜索（UI）", status: "draft", revision: 1, updated: hoursAgo(8) },
+  { code: "FR-013", title: "影响定位（UI）", revision: 1, updated: daysAgo(2) },
+  { code: "FR-014", title: "Markdown 导出（UI）", revision: 3, updated: minutesAgo(2), metadata: { priority: "P1" } },
+  { code: "FR-015", title: "托盘常驻与单实例", revision: 1, updated: daysAgo(5) },
+  { code: "FR-016", title: "应用设置（主题/语言/关闭行为）", revision: 2, updated: minutesAgo(10) },
+  { code: "FR-017", title: "恢复上次浏览位置（UI）", status: "draft", revision: 1, updated: minutesAgo(45) },
+  { code: "FR-018", title: "项目概览视图（UI）", status: "in_review", revision: 1, updated: minutesAgo(30) },
+  { code: "FR-019", title: "条目批量基线确认", status: "cancelled", revision: 1, updated: daysAgo(9) },
+  { code: "FR-020", title: "设计条目批量导入", status: "superseded", supersededBy: "FR-021", revision: 2, updated: daysAgo(7) },
+  { code: "FR-021", title: "确定性导入与基线快照（M2）", status: "draft", revision: 1, updated: daysAgo(7) },
+
+  // NFR / BR / CON
+  { code: "NFR-001", title: "数据可靠性（强杀不丢）", revision: 1, updated: daysAgo(6) },
+  { code: "NFR-002", title: "万级条目规模响应", revision: 2, updated: daysAgo(2) },
+  { code: "NFR-005", title: "本地通道安全（回环+令牌）", revision: 1, updated: daysAgo(6) },
+  { code: "NFR-008", title: "界面一致性（Fluent v9）", revision: 1, updated: daysAgo(3) },
+  { code: "BR-001", title: "项目内编号唯一且永不复用", revision: 1, updated: daysAgo(8) },
+  { code: "BR-004", title: "修订不可变追加", revision: 1, updated: daysAgo(8) },
+  { code: "BR-010", title: "任务阻塞派生规则", revision: 2, updated: daysAgo(2) },
+  { code: "CON-006", title: "桌面应用独立安装、托盘常驻", revision: 1, updated: daysAgo(8) },
+  { code: "CON-009", title: "UI 零业务写命令", revision: 1, updated: daysAgo(4) },
+
+  // UC / DOM
+  { code: "UC-004", title: "编辑条目产生修订", revision: 1, updated: daysAgo(5) },
+  { code: "UC-009", title: "建立 MCP 会话", revision: 2, updated: daysAgo(2) },
+  { code: "UC-011", title: "查看条目详情与修订历史", revision: 1, updated: daysAgo(3) },
+  { code: "UC-015", title: "影响定位", revision: 1, updated: daysAgo(2) },
+  { code: "UC-016", title: "导出 Markdown 文档集", revision: 2, updated: daysAgo(1) },
+  { code: "DOM-002", title: "条目（设计资产对象）", revision: 1, updated: daysAgo(9) },
+  { code: "DOM-003", title: "关系（有向语义链接）", revision: 1, updated: daysAgo(9) },
+  { code: "DOM-006", title: "任务（TASK 条目）", revision: 1, updated: daysAgo(9) },
+  { code: "DOM-008", title: "显示编号（前缀-序号）", revision: 1, updated: daysAgo(9) },
+
+  // CMP / INT / SEQ
+  { code: "CMP-001", title: "前端应用（WebView）", revision: 2, updated: daysAgo(1) },
+  { code: "CMP-003", title: "本地 HTTP API 层", revision: 1, updated: daysAgo(6) },
+  { code: "CMP-007", title: "导出器", revision: 1, updated: daysAgo(4) },
+  { code: "INT-001", title: "Tauri IPC 只读命令通道", revision: 2, updated: minutesAgo(30) },
+  { code: "INT-006", title: "导出命令与进度事件", revision: 1, updated: daysAgo(4) },
+  { code: "SEQ-001", title: "MCP 写入全链路", revision: 1, updated: daysAgo(5) },
+
+  // ADR / RISK / OQ
+  { code: "ADR-002", title: "意图级存储端口 + ChangeSet 单事务", revision: 2, updated: daysAgo(3) },
+  { code: "ADR-006", title: "IPC 只读通道与事件失效", revision: 1, updated: daysAgo(4) },
+  { code: "ADR-007", title: "React + Fluent UI v9 前端栈", revision: 1, updated: daysAgo(7) },
+  { code: "RISK-004", title: "编码 Agent 越界写入", revision: 1, updated: daysAgo(5) },
+  { code: "RISK-008", title: "LIKE 搜索规模性能", status: "in_review", revision: 2, updated: hoursAgo(4) },
+  { code: "OQ-001", title: "数据库为唯一事实来源", revision: 1, updated: daysAgo(10) },
+
+  // TASK（任务状态机）
+  { code: "TASK-001", title: "搭建 Tauri 脚手架与 CI 三件套", status: "done", revision: 3, updated: daysAgo(2) },
+  { code: "TASK-002", title: "实现 SQLite 存储与迁移", status: "done", revision: 2, updated: daysAgo(1) },
+  { code: "TASK-003", title: "实现 MCP 工具集 12 个", status: "doing", revision: 2, updated: hoursAgo(2), metadata: { priority: "P0" } },
+  { code: "TASK-004", title: "实现 IPC 只读命令面", status: "await_review", revision: 1, updated: hoursAgo(6) },
+  { code: "TASK-005", title: "本地 HTTP API 鉴权与握手", status: "doing", revision: 2, updated: hoursAgo(3) },
+  { code: "TASK-006", title: "关系图可视化（M2 预研）", status: "cancelled", revision: 1, updated: daysAgo(4) },
+  { code: "TASK-007", title: "UI 全量实现（mock 数据）", status: "todo", revision: 1, updated: minutesAgo(15), metadata: { priority: "P0" } },
+  { code: "TASK-008", title: "确定性导出目录结构", status: "todo", revision: 1, updated: hoursAgo(9) },
+  { code: "TASK-009", title: "后端命令落地与前后端联调", status: "todo", revision: 1, updated: minutesAgo(5) },
+  { code: "TASK-010", title: "基线确认流程（M2 回补编号）", status: "todo", revision: 1, updated: daysAgo(1) },
+];
+
+const relayRelations: MockProject["relations"] = [
+  // 设计派生自需求（A derives B：A 派生自 B）
+  { source: "CMP-001", target: "FR-008", type: "derives" },
+  { source: "CMP-001", target: "FR-009", type: "derives" },
+  { source: "INT-001", target: "FR-008", type: "derives" },
+  { source: "INT-001", target: "CON-009", type: "derives" },
+  { source: "CMP-003", target: "NFR-005", type: "derives" },
+  { source: "CMP-007", target: "FR-014", type: "derives" },
+  { source: "ADR-006", target: "CON-009", type: "derives" },
+  { source: "SEQ-001", target: "ADR-002", type: "derives" },
+  // 任务满足需求（A satisfies B）
+  { source: "TASK-003", target: "FR-001", type: "satisfies" },
+  { source: "TASK-004", target: "FR-008", type: "satisfies" },
+  { source: "TASK-004", target: "INT-001", type: "satisfies" },
+  { source: "TASK-005", target: "NFR-005", type: "satisfies" },
+  { source: "TASK-007", target: "FR-009", type: "satisfies" },
+  { source: "TASK-008", target: "FR-014", type: "satisfies" },
+  { source: "TASK-009", target: "INT-001", type: "satisfies" },
+  { source: "TASK-001", target: "CON-006", type: "satisfies" },
+  // 任务依赖（A depends B：B 未完成则 A 阻塞）
+  { source: "TASK-009", target: "TASK-004", type: "depends" },
+  { source: "TASK-009", target: "TASK-005", type: "depends" },
+  { source: "TASK-007", target: "TASK-003", type: "depends" },
+  { source: "TASK-008", target: "TASK-002", type: "depends" },
+  // 溯迹与松散关联
+  { source: "ADR-007", target: "OQ-001", type: "traces" },
+  { source: "RISK-008", target: "NFR-002", type: "traces" },
+  { source: "FR-018", target: "UC-011", type: "relates" },
+  { source: "FR-021", target: "FR-014", type: "relates" },
+];
+
+function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus): Revision["snapshot"] {
+  return {
+    title: item.title,
+    bodyMd: item.bodyMd,
+    metadata: { ...item.metadata },
+    status: statusOverride ?? item.status,
+  };
+}
+
+function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
+  const out: Revision[] = [];
+  for (const item of items) {
+    // r1 一定是创建；有多修订的条目补中间版本（内容微变，供版本切换走查）
+    out.push({
+      code: item.code,
+      revisionNo: 1,
+      actor: "agent-session-1",
+      summary: "创建条目",
+      changedAt: item.createdAt,
+      snapshot: snapshotOf(item, item.itemType === "TASK" ? "todo" : "draft"),
+    });
+    if (item.currentRevision >= 2) {
+      out.push({
+        code: item.code,
+        revisionNo: 2,
+        actor: "agent-session-2",
+        summary: `修订正文与元数据（${item.title}）`,
+        changedAt: item.updatedAt + 3_600_000,
+        snapshot: snapshotOf(item, item.itemType === "TASK" ? "doing" : "in_review"),
+      });
+    }
+    if (item.currentRevision >= 3) {
+      out.push({
+        code: item.code,
+        revisionNo: 3,
+        actor: "agent-session-3",
+        summary: item.status === "in_review" || item.status === "draft" ? "补充验收依据" : "确认定稿",
+        changedAt: item.updatedAt,
+        snapshot: snapshotOf(item),
+      });
+    }
+  }
+  return out.sort((a, b) => b.changedAt - a.changedAt);
+}
+
+const relayProject: MockProject = (() => {
+  const items = relayItems.map((s) => makeItem("p-relay", s));
+  const taskCount = items.filter((i) => i.itemType === "TASK").length;
+  const summary: ProjectSummary = {
+    id: "p-relay",
+    name: "relay-harbor 设计库",
+    repoPath: "D:\\projects\\relay-harbor",
+    itemCount: items.length - taskCount,
+    taskCount,
+    updatedAt: Math.max(...items.map((i) => i.updatedAt)),
+  };
+  return { summary, items, relations: relayRelations, revisions: revisionsFor("p-relay", items) };
+})();
+
+const zhsppyItems: ItemSpec[] = [
+  { code: "FR-001", title: "识别项配置化管理", revision: 2, updated: hoursAgo(5) },
+  { code: "FR-002", title: "审核规则入库", status: "in_review", revision: 1, updated: hoursAgo(2) },
+  { code: "UC-001", title: "新增识别项", revision: 1, updated: daysAgo(3) },
+  { code: "BR-001", title: "SBD_ 编号空间规则", revision: 1, updated: daysAgo(4) },
+  { code: "TASK-001", title: "评分表覆盖度对比", status: "doing", revision: 1, updated: hoursAgo(1) },
+  { code: "TASK-002", title: "规则端联调", status: "todo", revision: 1, updated: hoursAgo(8) },
+];
+
+const zhsppyProject: MockProject = (() => {
+  const items = zhsppyItems.map((s) => makeItem("p-zhsppy", s));
+  const taskCount = items.filter((i) => i.itemType === "TASK").length;
+  return {
+    summary: {
+      id: "p-zhsppy",
+      name: "zhsppy 提取端",
+      repoPath: "D:\\projects\\zhsppy",
+      itemCount: items.length - taskCount,
+      taskCount,
+      updatedAt: Math.max(...items.map((i) => i.updatedAt)),
+    },
+    items,
+    relations: [
+      { source: "TASK-001", target: "FR-001", type: "satisfies" },
+      { source: "TASK-002", target: "FR-002", type: "satisfies" },
+      { source: "TASK-002", target: "TASK-001", type: "depends" },
+      { source: "UC-001", target: "BR-001", type: "traces" },
+    ],
+    revisions: revisionsFor("p-zhsppy", items),
+  };
+})();
+
+export const projects: MockProject[] = [relayProject, zhsppyProject];
+
+export function findProject(projectId: string): MockProject | undefined {
+  return projects.find((p) => p.summary.id === projectId);
+}
+
+export function findItem(projectId: string, code: string): ItemDetail | undefined {
+  return findProject(projectId)?.items.find((i) => i.code === code);
+}
+
+/** 未完成 = 任务状态机非终态（阻塞派生前提，BR-010） */
+export function isTaskActive(card: Pick<TaskCard, "status">): boolean {
+  return card.status === "todo" || card.status === "doing" || card.status === "await_review";
+}
