@@ -1,0 +1,268 @@
+// 条目详情页（UI-015～018，FR-009/010/013，UC-011/012/015）：独立全宽、单栏滚动
+// 头部 → 正文（Markdown 只读渲染）→ 关联 → 影响定位内嵌清单 → 修订时间线（版本切换）。
+import { useMemo, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import Markdown from "react-markdown";
+import {
+  Badge,
+  Divider,
+  Link as FluentLink,
+  MessageBar,
+  MessageBarBody,
+  MessageBarActions,
+  Button,
+  Text,
+  Title2,
+  Title3,
+  makeStyles,
+  mergeClasses,
+  tokens,
+} from "@fluentui/react-components";
+import { ArrowLeft24Regular } from "@fluentui/react-icons";
+import { StatusBadge } from "../../../components/StatusBadge";
+import { ErrorState } from "../../../components/ErrorState";
+import { SkeletonRows } from "../../../components/Skeletons";
+import { RelativeTime } from "../../../components/RelativeTime";
+import type { ImpactEntry, ItemType, RelationEntry, RelationType } from "../../../api/types";
+import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
+
+const useStyles = makeStyles({
+  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "860px", margin: "0 auto" },
+  back: { marginBottom: tokens.spacingVerticalS, display: "inline-flex", alignItems: "center", gap: "6px" },
+  header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
+  titleRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap" },
+  code: { fontFamily: tokens.fontFamilyMonospace, color: tokens.colorNeutralForeground2 },
+  metaRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap", color: tokens.colorNeutralForeground3 },
+  metaChip: {
+    padding: `2px ${tokens.spacingHorizontalS}`,
+    border: `1px solid ${tokens.colorNeutralStroke2}`,
+    borderRadius: tokens.borderRadiusSmall,
+    fontSize: tokens.fontSizeBase200,
+  },
+  body: { lineHeight: 1.7 },
+  section: { marginTop: tokens.spacingVerticalXXL },
+  sectionTitle: { marginBottom: tokens.spacingVerticalS },
+  entryRow: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr auto",
+    columnGap: tokens.spacingHorizontalM,
+    alignItems: "baseline",
+    paddingBlock: tokens.spacingVerticalXXS,
+  },
+  mono: { fontFamily: tokens.fontFamilyMonospace },
+  link: { color: tokens.colorBrandForeground1 },
+  revisionRow: {
+    width: "100%",
+    display: "grid",
+    gridTemplateColumns: "56px 1fr auto",
+    columnGap: tokens.spacingHorizontalM,
+    alignItems: "baseline",
+    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
+    textAlign: "left",
+    borderRadius: tokens.borderRadiusMedium,
+  },
+  revisionActive: { backgroundColor: tokens.colorNeutralBackground1Selected },
+  muted: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
+  empty: { color: tokens.colorNeutralForeground3 },
+});
+
+export function ItemDetailPage() {
+  const styles = useStyles();
+  const { t } = useTranslation();
+  const { projectId = "", code = "" } = useParams();
+  const navigate = useNavigate();
+  const detail = useItemDetailQuery(projectId, code);
+  const revisions = useItemRevisionsQuery(projectId, code);
+  const relations = useRelationsQuery(projectId, code);
+  const impact = useImpactQuery(projectId, code);
+  /** null = 当前版本；数字 = 查看该历史版本快照（UI-017） */
+  const [viewedRevision, setViewedRevision] = useState<number | null>(null);
+
+  const relationsByType = useMemo(() => {
+    const map = new Map<RelationType, RelationEntry[]>();
+    for (const entry of relations.data ?? []) {
+      const list = map.get(entry.relationType) ?? [];
+      list.push(entry);
+      map.set(entry.relationType, list);
+    }
+    return [...map.entries()];
+  }, [relations.data]);
+
+  const impactByType = useMemo(() => {
+    const map = new Map<ItemType, ImpactEntry[]>();
+    for (const entry of impact.data?.entries ?? []) {
+      const list = map.get(entry.item.itemType) ?? [];
+      list.push(entry);
+      map.set(entry.item.itemType, list);
+    }
+    return [...map.entries()];
+  }, [impact.data]);
+
+  if (detail.isPending) {
+    return (
+      <div className={styles.page}>
+        <SkeletonRows rows={10} />
+      </div>
+    );
+  }
+  if (detail.error) {
+    return (
+      <div className={styles.page}>
+        <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
+      </div>
+    );
+  }
+
+  const item = detail.data;
+  const viewed = viewedRevision != null ? revisions.data?.find((r) => r.revisionNo === viewedRevision) : undefined;
+  const bodyMd = viewed ? viewed.snapshot.bodyMd : item.bodyMd;
+
+  return (
+    <article className={styles.page}>
+      {/* 面包屑返回（UI-015） */}
+      <FluentLink as="a" onClick={() => navigate(`/projects/${projectId}/items`)} className={styles.back}>
+        <ArrowLeft24Regular /> {t("common.backToList")}
+      </FluentLink>
+
+      {/* 头部：编号/标题/状态/元数据（UI-016） */}
+      <header className={styles.header}>
+        <div className={styles.titleRow}>
+          <Title2 className={styles.code}>{item.code}</Title2>
+          <Title2>{item.title}</Title2>
+          <StatusBadge status={item.status} size="large" />
+        </div>
+        <div className={styles.metaRow}>
+          {Object.entries(item.metadata).map(([key, value]) => (
+            <span key={key} className={styles.metaChip}>
+              {key}: {value}
+            </span>
+          ))}
+          <span>
+            r{item.currentRevision} · <RelativeTime timestamp={item.updatedAt} />
+          </span>
+          {item.supersededBy ? (
+            <Link to={`/projects/${projectId}/items/${item.supersededBy}`} className={styles.link}>
+              {t("itemDetail.supersededBy", { code: item.supersededBy })}
+            </Link>
+          ) : null}
+        </div>
+      </header>
+
+      {/* 历史版本查看提示条（UI-017） */}
+      {viewed ? (
+        <MessageBar intent="info" style={{ marginBottom: tokens.spacingVerticalM }}>
+          <MessageBarBody>{t("common.viewingHistory", { rev: viewed.revisionNo })}</MessageBarBody>
+          <MessageBarActions>
+            <Button appearance="primary" size="small" onClick={() => setViewedRevision(null)}>
+              {t("common.backToCurrent")}
+            </Button>
+          </MessageBarActions>
+        </MessageBar>
+      ) : null}
+
+      {/* 正文：Markdown 只读渲染（CON-009，无编辑形态） */}
+      <div className={styles.body}>
+        <Markdown>{bodyMd}</Markdown>
+      </div>
+
+      {/* 关联区：按关系类型分组、上下游、可跳转（FR-010/UI-016） */}
+      <section className={styles.section}>
+        <Divider>
+          <Title3>{t("itemDetail.relations")}</Title3>
+        </Divider>
+        {relationsByType.length === 0 ? (
+          <Text className={styles.empty}>{t("common.noRelations")}</Text>
+        ) : (
+          relationsByType.map(([relationType, entries]) => (
+            <div key={relationType}>
+              <Text weight="semibold" size={300}>
+                {t(`relation.${relationType}`)}
+              </Text>
+              {entries.map((entry) => (
+                <div key={`${entry.relationType}-${entry.direction}-${entry.peer.code}`} className={styles.entryRow}>
+                  <Badge appearance="ghost" size="small">
+                    {t(`itemDetail.direction${entry.direction === "out" ? "Out" : "In"}`)}
+                  </Badge>
+                  <span>
+                    <Link to={`/projects/${projectId}/items/${entry.peer.code}`} className={mergeClasses(styles.mono, styles.link)}>
+                      {entry.peer.code}
+                    </Link>{" "}
+                    <Text size={300}>{entry.peer.title}</Text>
+                  </span>
+                  <StatusBadge status={entry.peer.status} />
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </section>
+
+      {/* 影响定位：内嵌清单，按类型分组、逐项可跳转（FR-013/UI-018） */}
+      <section className={styles.section}>
+        <Divider>
+          <Title3>{t("itemDetail.impact")}</Title3>
+        </Divider>
+        {impactByType.length === 0 ? (
+          <Text className={styles.empty}>{t("common.noImpact")}</Text>
+        ) : (
+          impactByType.map(([type, entries]) => (
+            <div key={type}>
+              <Text weight="semibold" size={300}>
+                {type} · {t(`type.${type}`)}
+              </Text>
+              {entries.map((entry) => (
+                <div key={entry.item.code} className={styles.entryRow}>
+                  <Badge appearance="ghost" size="small">
+                    {t("itemDetail.affectedDepth", { depth: entry.depth })}
+                  </Badge>
+                  <span>
+                    <Link to={`/projects/${projectId}/items/${entry.item.code}`} className={mergeClasses(styles.mono, styles.link)}>
+                      {entry.item.code}
+                    </Link>{" "}
+                    <Text size={300}>{entry.item.title}</Text>
+                  </span>
+                  <StatusBadge status={entry.item.status} />
+                </div>
+              ))}
+            </div>
+          ))
+        )}
+      </section>
+
+      {/* 修订历史：时间线 + 版本切换（FR-009/UI-017，无 diff） */}
+      <section className={styles.section}>
+        <Divider>
+          <Title3>{t("itemDetail.revisions")}</Title3>
+        </Divider>
+        {(revisions.data ?? []).map((revision) => {
+          const isCurrent = revision.revisionNo === item.currentRevision;
+          const isViewing = viewedRevision === revision.revisionNo || (viewedRevision == null && isCurrent);
+          return (
+            <Button
+              key={revision.revisionNo}
+              appearance="subtle"
+              className={mergeClasses(styles.revisionRow, isViewing && styles.revisionActive)}
+              onClick={() => setViewedRevision(isCurrent ? null : revision.revisionNo)}
+            >
+              <span className={styles.mono}>
+                r{revision.revisionNo}
+                {isCurrent ? ` · ${t("common.current")}` : ""}
+              </span>
+              <span>
+                <Text size={300}>{revision.summary}</Text>
+                <span className={styles.muted}>
+                  {" "}
+                  · {revision.actor}
+                </span>
+              </span>
+              <span className={styles.muted}>
+                <RelativeTime timestamp={revision.changedAt} />
+              </span>
+            </Button>
+          );
+        })}
+      </section>
+    </article>
+  );
+}
