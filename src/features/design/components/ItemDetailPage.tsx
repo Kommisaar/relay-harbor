@@ -28,7 +28,8 @@ import type { ImpactEntry, ItemType, RelationEntry, RelationType } from "../../.
 import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "860px", margin: "0 auto" },
+  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 860 口径
+  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "908px", margin: "0 auto" },
   back: { marginBottom: tokens.spacingVerticalS, display: "inline-flex", alignItems: "center", gap: "6px" },
   header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
   titleRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap" },
@@ -120,8 +121,12 @@ export function ItemDetailPage() {
 
   return (
     <article className={styles.page}>
-      {/* 面包屑返回（UI-015） */}
-      <FluentLink as="a" onClick={() => navigate(`/projects/${projectId}/items`)} className={styles.back}>
+      {/* 面包屑返回（UI-015）→ 所属类型页（2026-09-01 类型页拆分） */}
+      <FluentLink
+        as="a"
+        onClick={() => navigate(`/projects/${projectId}/items/type/${item.itemType}`)}
+        className={styles.back}
+      >
         <ArrowLeft24Regular /> {t("common.backToList")}
       </FluentLink>
 

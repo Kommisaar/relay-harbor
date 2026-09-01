@@ -10,3 +10,5 @@ src-tauri/gen/schemas/
 .DS_Store
 .idea/
 .vscode/
+# ZCode 本地会话产物
+.zcode/

@@ -73,7 +73,8 @@ const toggled = (key: string, hidden: ReadonlySet<string>): ReadonlySet<string> 
 };
 
 const useStyles = makeStyles({
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "1080px", margin: "0 auto" },
+  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 1080 口径
+  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "1128px", margin: "0 auto" },
   sectionCard: {
     display: "flex",
     flexDirection: "column",

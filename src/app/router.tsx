@@ -1,14 +1,16 @@
-// 路由集中式（modules/frontend.md 2026-08-28 修订）：/projects、/export（全部
-// 项目导出，UI-033）、/projects/:projectId/（index=概览；items、items/:code、
-// tasks、search、export）、/settings。impact 为条目详情内嵌区（UI-018），不独立路由。
+// 路由集中式（modules/frontend.md 2026-09-01 修订）：/projects、
+// /projects/:projectId/（index=概览；items→重定向首个类型、
+// items/type/:type（2026-09-01 用户指令：条目按 13 类型拆独立子页面，
+// 聚合页取消）、items/:code、tasks）、/settings。impact 为条目详情
+// 内嵌区（UI-018），不独立路由；导出无路由（2026-08-28 用户指令：
+// 项目列表卡片 Popover，ui/pages/export.md）；搜索无路由（2026-08-28
+// 用户指令暂缓：ui/pages/search.md），旧路由均经通配回落 /projects。
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./layout/AppShell";
 import { Boot } from "./Boot";
-import { DesignPage, ItemDetailPage } from "../features/design";
-import { ExportPage, GlobalExportPage } from "../features/export";
+import { ItemDetailPage, ItemsIndexRedirect, ItemsTypePage } from "../features/design";
 import { OverviewPage } from "../features/overview";
 import { ProjectsPage } from "../features/projects";
-import { SearchPage } from "../features/search";
 import { SettingsPage } from "../features/settings";
 import { TasksPage } from "../features/tasks";
 
@@ -18,16 +20,14 @@ export const router = createBrowserRouter([
     element: <AppShell />,
     children: [
       { path: "projects", element: <ProjectsPage /> },
-      { path: "export", element: <GlobalExportPage /> },
       {
         path: "projects/:projectId",
         children: [
           { index: true, element: <OverviewPage /> },
-          { path: "items", element: <DesignPage /> },
+          { path: "items", element: <ItemsIndexRedirect /> },
+          { path: "items/type/:type", element: <ItemsTypePage /> },
           { path: "items/:code", element: <ItemDetailPage /> },
           { path: "tasks", element: <TasksPage /> },
-          { path: "search", element: <SearchPage /> },
-          { path: "export", element: <ExportPage /> },
         ],
       },
       { path: "settings", element: <SettingsPage /> },

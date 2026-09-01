@@ -1,7 +1,9 @@
 # 搜索页
 
-> 状态：待确认
-> 路由：`/projects/:id/search`
+> 状态：**暂缓**（2026-08-28 用户指令：搜索页自界面移除——路由与子导航
+> 入口删除，`features/search` 目录移除；本规格保留备恢复。能力与契约
+> 不变：`search_items` 命令、api 层与 mock 保留，FR-012/UC-014 不废止）
+> 路由：`/projects/:id/search`（已移除，旧地址经通配回落 `/projects`）
 > 关联：UI-022、FR-012、UC-014、CMP-001
 
 ## 布局（UI-022）

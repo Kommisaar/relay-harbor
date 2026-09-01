@@ -1,4 +1,4 @@
-// 查询：条目浏览（FR-009）、详情、修订、关联（FR-010）、影响定位（FR-013）。
+// 查询：条目类型页（FR-009）、详情、修订、关联（FR-010）、影响定位（FR-013）。
 // key 均以 ["projects", projectId, ...] 开头（ADR-006 失效前提）。
 import { useQuery } from "@tanstack/react-query";
 import { getImpact, getItemDetail, getItemRevisions, getRelations, listItems } from "../../api/commands";

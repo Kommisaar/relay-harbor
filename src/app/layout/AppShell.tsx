@@ -1,5 +1,7 @@
-// 应用外壳（UI-001）：活动栏 + 第二层侧栏 + 内容区。
-// 承担 last_location 持久化（UI-005/FR-017）与当前项目 id 的 Zustand 同步。
+// 应用外壳（UI-001，2026-08-29 用户指令确认双层恢复）：第一层活动栏
+// （双态，汉堡切换）+ 第二层项目导航栏（停靠常驻，设置页不显示）+
+// 内容区。承担 last_location 持久化（UI-005/FR-017）与当前项目 id 的
+// Zustand 同步。
 import { useEffect } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -29,13 +31,12 @@ export function AppShell() {
   const styles = useStyles();
   const { pathname } = useLocation();
   const queryClient = useQueryClient();
-  const sidebarOpen = useUiStore((s) => s.sidebarOpen);
   const setCurrentProject = useUiStore((s) => s.setCurrentProject);
 
   const projectId = projectIdFromPath(pathname);
   const isSettings = pathname.startsWith("/settings");
-  // 设置页无二级导航（UI-002）；侧栏开合对其余页面生效
-  const showSidebar = !isSettings && sidebarOpen;
+  // 设置页无二级导航（UI-002）；第二层常驻（2026-08-29 用户指令移除收起）
+  const showSidebar = !isSettings;
 
   useEffect(() => {
     setCurrentProject(projectId);

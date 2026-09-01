@@ -1,0 +1,15 @@
+/* 全局重置：浏览器默认 body 8px 外边距会让整个应用四周出现白边，
+   活动栏/内容区等贴边布局依赖 margin:0 */
+body {
+  margin: 0;
+}
+
+/* 全局盒模型 border-box（2026-09-01 迁移，约定见 ui/patterns.md「盒模型」）：
+   显式 width/height 即最终占位（含 padding 与 border）。存量等值调整：
+   侧栏行 minHeight 36/32 → 44/40、页面容器 maxWidth +48（原 content-box
+   口径只算内容宽）；侧栏总宽回归文档口径 232px */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}

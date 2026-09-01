@@ -1,4 +1,5 @@
 // 项目列表页（UI-010/FR-008/UC-010）：列表行/卡片双形态可切换 + 本地关键词过滤；
+// 卡片/行内嵌统计区块（get_project_state，见 project-list.md「项目卡片统计」）；
 // 无创建/删除入口（CON-009），空态引导"项目由 Agent 经 MCP 创建"（UI-031）。
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -17,15 +18,18 @@ import {
 import { Grid24Regular, List24Regular, Search24Regular } from "@fluentui/react-icons";
 import { EmptyState } from "../../../components/EmptyState";
 import { ErrorState } from "../../../components/ErrorState";
+import { ExportPopover } from "../../../components/ExportPopover";
 import { PageTitle } from "../../../components/PageTitle";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { useCardLiftStyles } from "../../../components/useCardLiftStyles";
 import { useUiStore } from "../../../stores/ui";
 import { useProjectsQuery } from "../queries";
+import { ProjectStats } from "./ProjectStats";
 
 const useStyles = makeStyles({
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "960px", margin: "0 auto" },
+  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 960 口径
+  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "1008px", margin: "0 auto" },
   toolbar: {
     display: "flex",
     alignItems: "center",
@@ -33,6 +37,9 @@ const useStyles = makeStyles({
     marginBottom: tokens.spacingVerticalL,
   },
   toolbarSpacer: { flex: 1 },
+  // 见 patterns.md「工具条」：标题不收缩、过滤控件 120px 下限
+  toolbarTitle: { flexShrink: 0 },
+  toolbarControl: { minWidth: "120px" },
   rows: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalS },
   row: {
     width: "100%",
@@ -54,6 +61,8 @@ const useStyles = makeStyles({
   },
   cards: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: tokens.spacingHorizontalM },
   card: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalS, cursor: "pointer" },
+  cardHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: tokens.spacingHorizontalS },
+  cardActions: { display: "inline-flex", alignItems: "center", gap: tokens.spacingHorizontalS },
 });
 
 export function ProjectsPage() {
@@ -96,11 +105,12 @@ export function ProjectsPage() {
   return (
     <div className={styles.page}>
       <div className={styles.toolbar}>
-        <Title2>{t("projects.title")}</Title2>
+        <Title2 className={styles.toolbarTitle}>{t("projects.title")}</Title2>
         <div className={styles.toolbarSpacer} />
         {!empty ? (
           <>
             <Input
+              className={styles.toolbarControl}
               contentBefore={<Search24Regular />}
               placeholder={t("common.keyword")}
               value={keyword}
@@ -140,6 +150,7 @@ export function ProjectsPage() {
                 {t("common.itemsCount", { count: p.itemCount })} · {t("common.tasksCount", { count: p.taskCount })} ·{" "}
                 <RelativeTime timestamp={p.updatedAt} />
               </span>
+              <ProjectStats projectId={p.id} compact />
             </Button>
           ))}
         </div>
@@ -147,14 +158,23 @@ export function ProjectsPage() {
         <div className={styles.cards}>
           {filtered.map((p) => (
             <Card key={p.id} className={mergeClasses(styles.card, lift.root)} onClick={() => navigate(`/projects/${p.id}`)} focusMode="no-tab">
-              <Text weight="semibold" size={400}>
-                {p.name}
-              </Text>
+              <div className={styles.cardHead}>
+                <Text weight="semibold" size={400}>
+                  {p.name}
+                </Text>
+                <span className={styles.cardActions}>
+                  {/* 导出弹出框（UI-023 修订）：内部已 stopPropagation，不会触发卡片跳转 */}
+                  <ExportPopover projectId={p.id} projectName={p.name} />
+                  <span className={styles.rowMeta}>
+                    <RelativeTime timestamp={p.updatedAt} />
+                  </span>
+                </span>
+              </div>
+              <span className={styles.repoPath}>{p.repoPath ?? t("common.noRepoPath")}</span>
               <span className={styles.rowMeta}>
                 {t("common.itemsCount", { count: p.itemCount })} · {t("common.tasksCount", { count: p.taskCount })}
               </span>
-              <RelativeTime timestamp={p.updatedAt} />
-              <span className={styles.repoPath}>{p.repoPath ?? t("common.noRepoPath")}</span>
+              <ProjectStats projectId={p.id} />
             </Card>
           ))}
         </div>

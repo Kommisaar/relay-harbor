@@ -1,5 +1,5 @@
 // 条目标准行（UI-013）：编号 + 标题 + 状态徽章 + 修订号 + 更新时间。
-// 条目浏览与搜索结果共用（跨 feature 共享上提 components/，dep-cruiser 规则）。
+// 条目类型页与搜索结果共用（跨 feature 共享上提 components/，dep-cruiser 规则）。
 import { makeStyles, tokens, Button } from "@fluentui/react-components";
 import type { ItemSummary, SearchMatchedIn } from "../api/types";
 import { useTranslation } from "react-i18next";

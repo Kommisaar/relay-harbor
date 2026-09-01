@@ -36,6 +36,7 @@ Rust 侧（`src-tauri/`）：`cargo test`（含 export_ts_bindings，刷新前�
 
 ## 前端约定
 
+- 全局盒模型 `box-sizing: border-box`（`src/styles.css`）：显式尺寸即最终占位，裸元素勿再逐个声明（约定详见 `docs/design/05-detailed-design/ui/patterns.md`「盒模型」）。
 - 所有 UI 文案走 react-i18next（`src/i18n/`），主中文，禁止硬编码文案。
 - 纯浏览器开发（`npm run dev`）时 Tauri invoke 不可用，依赖 `src/api/mock/` 提供数据；api 层接口保持可 mock。
 - 卡片 hover 浮起用共享 hook `src/components/useCardLiftStyles.ts`；表单容器卡片刻意不加（避免填写时跳动）。

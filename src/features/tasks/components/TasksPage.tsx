@@ -27,6 +27,9 @@ const useStyles = makeStyles({
   page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, height: "100%", display: "flex", flexDirection: "column" },
   toolbar: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, marginBottom: tokens.spacingVerticalL },
   toolbarSpacer: { flex: 1 },
+  // 见 patterns.md「工具条」：标题不收缩、过滤控件 120px 下限
+  toolbarTitle: { flexShrink: 0 },
+  toolbarControl: { minWidth: "120px" },
   board: { display: "flex", gap: tokens.spacingHorizontalM, overflowX: "auto", paddingBottom: tokens.spacingVerticalL, alignItems: "flex-start" },
   column: { flex: "1 0 224px", display: "flex", flexDirection: "column", gap: tokens.spacingVerticalS },
   columnHeader: {
@@ -114,9 +117,10 @@ export function TasksPage() {
   return (
     <div className={styles.page}>
       <div className={styles.toolbar}>
-        <Title2>{t("tasks.title")}</Title2>
+        <Title2 className={styles.toolbarTitle}>{t("tasks.title")}</Title2>
         <div className={styles.toolbarSpacer} />
         <Input
+          className={styles.toolbarControl}
           contentBefore={<Search24Regular />}
           placeholder={t("tasks.filterPlaceholder")}
           value={keyword}

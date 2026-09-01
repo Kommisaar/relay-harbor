@@ -14,7 +14,8 @@ import { PageTitle } from "../../../components/PageTitle";
 import { useSettingsQuery, useUpdateSettings } from "../queries";
 
 const useStyles = makeStyles({
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "640px", margin: "0 auto" },
+  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 640 口径
+  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "688px", margin: "0 auto" },
   card: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalM, marginBottom: tokens.spacingVerticalL },
   field: { display: "grid", gridTemplateColumns: "160px 220px", alignItems: "center", gap: tokens.spacingHorizontalM },
 });
