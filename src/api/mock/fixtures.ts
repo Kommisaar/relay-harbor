@@ -120,6 +120,35 @@ const relayItems: ItemSpec[] = [
   { code: "INT-006", title: "导出命令与进度事件", revision: 1, updated: daysAgo(4) },
   { code: "SEQ-001", title: "MCP 写入全链路", revision: 1, updated: daysAgo(5) },
 
+  // UI（界面设计规格，2026-09-01 用户指令升格第 14 类型；标题取 ui/README 索引）
+  { code: "UI-001", title: "双层侧栏骨架（活动栏双态+项目导航栏）", revision: 2, updated: daysAgo(1) },
+  { code: "UI-002", title: "导航内容（总览+项目清单+子导航）", revision: 2, updated: daysAgo(1) },
+  { code: "UI-003", title: "主题三态（跟随系统/浅色/深色）", revision: 1, updated: daysAgo(6) },
+  { code: "UI-004", title: "界面语言三态（中/英/跟随系统）", revision: 1, updated: daysAgo(6) },
+  { code: "UI-005", title: "冷启动恢复上次浏览位置", revision: 1, updated: daysAgo(5) },
+  { code: "UI-006", title: "系统原生标题栏", revision: 1, updated: daysAgo(7) },
+  { code: "UI-007", title: "窗口默认尺寸与缩放边界", revision: 1, updated: daysAgo(7) },
+  { code: "UI-010", title: "项目列表页（列表行/卡片双形态）", revision: 2, updated: daysAgo(2) },
+  { code: "UI-011", title: "项目概览页（统计/分布/修订/阻塞）", revision: 1, updated: minutesAgo(30) },
+  { code: "UI-012", title: "条目按类型拆独立子页面", revision: 3, updated: minutesAgo(12) },
+  { code: "UI-013", title: "条目标准行", revision: 1, updated: daysAgo(3) },
+  { code: "UI-014", title: "条目页过滤工具条", revision: 2, updated: minutesAgo(12) },
+  { code: "UI-015", title: "条目详情独立页", revision: 1, updated: daysAgo(4) },
+  { code: "UI-016", title: "详情单栏滚动结构", revision: 1, updated: daysAgo(4) },
+  { code: "UI-017", title: "修订时间线+版本切换", revision: 1, updated: daysAgo(4) },
+  { code: "UI-018", title: "影响定位内嵌清单", revision: 1, updated: daysAgo(4) },
+  { code: "UI-019", title: "任务面板（看板五列）", status: "in_review", revision: 2, updated: daysAgo(1) },
+  { code: "UI-020", title: "任务卡片基础款", revision: 1, updated: daysAgo(3) },
+  { code: "UI-021", title: "看板全局单过滤框", revision: 1, updated: daysAgo(3) },
+  { code: "UI-022", title: "搜索独立页（暂缓）", status: "cancelled", revision: 1, updated: daysAgo(6) },
+  { code: "UI-023", title: "导出卡片弹出框", revision: 2, updated: daysAgo(2) },
+  { code: "UI-024", title: "设置单页分组卡片", revision: 1, updated: daysAgo(5) },
+  { code: "UI-030", title: "状态徽章语义色映射", revision: 1, updated: daysAgo(2) },
+  { code: "UI-031", title: "引导式空态", revision: 1, updated: daysAgo(2) },
+  { code: "UI-032", title: "加载态（骨架屏/spinner）", revision: 2, updated: minutesAgo(40) },
+  { code: "UI-033", title: "全部项目导出页（已移除）", status: "cancelled", revision: 1, updated: daysAgo(6) },
+  { code: "UI-034", title: "设计文档浏览页", status: "draft", revision: 1, updated: minutesAgo(8) },
+
   // ADR / RISK / OQ
   { code: "ADR-002", title: "意图级存储端口 + ChangeSet 单事务", revision: 2, updated: daysAgo(3) },
   { code: "ADR-006", title: "IPC 只读通道与事件失效", revision: 1, updated: daysAgo(4) },
@@ -170,6 +199,11 @@ const relayRelations: MockProject["relations"] = [
   { source: "RISK-008", target: "NFR-002", type: "traces" },
   { source: "FR-018", target: "UC-011", type: "relates" },
   { source: "FR-021", target: "FR-014", type: "relates" },
+  // UI 规格派生自需求/界面相关（2026-09-01 UI 类型样本）
+  { source: "UI-012", target: "FR-009", type: "derives" },
+  { source: "UI-019", target: "FR-011", type: "derives" },
+  { source: "UI-023", target: "FR-014", type: "derives" },
+  { source: "UI-034", target: "FR-009", type: "relates" },
 ];
 
 function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus): Revision["snapshot"] {

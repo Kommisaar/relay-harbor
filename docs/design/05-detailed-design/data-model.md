@@ -23,7 +23,7 @@ erDiagram
         uuid id PK
         uuid project_id FK
         text display_code "如 FR-001"
-        text item_type "13 种前缀之一，不可变"
+        text item_type "14 种前缀之一，不可变"
         text title
         text body_md
         json metadata

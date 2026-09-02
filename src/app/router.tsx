@@ -1,6 +1,6 @@
 // 路由集中式（modules/frontend.md 2026-09-01 修订）：/projects、
 // /projects/:projectId/（index=概览；items→重定向首个类型、
-// items/type/:type（2026-09-01 用户指令：条目按 13 类型拆独立子页面，
+// items/type/:type（2026-09-01 用户指令：条目按 14 类型拆独立子页面，
 // 聚合页取消）、items/:code、tasks）、/settings。impact 为条目详情
 // 内嵌区（UI-018），不独立路由；导出无路由（2026-08-28 用户指令：
 // 项目列表卡片 Popover，ui/pages/export.md）；搜索无路由（2026-08-28

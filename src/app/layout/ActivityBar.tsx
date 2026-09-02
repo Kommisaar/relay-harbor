@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { useUiStore } from "../../stores/ui";
+import { moveIndicator } from "./indicatorMotion";
 
 const useStyles = makeStyles({
   rail: {
@@ -105,14 +106,6 @@ const useStyles = makeStyles({
   spacer: { flex: 1 },
 });
 
-// 指示条位移动画参数：时长 400ms（durationSlower，2026-08-29 用户指令，
-// 位移动画行程长、带拉伸形变，慢于宽度动画的 250ms 更显流畅），曲线与
-// 面板宽度动画一致（统一减速曲线）。tokens 运行时值是 var(--…) 引用，
-// WAAPI 需要具体数值，此处按 @fluentui/tokens 定义取字面量（若主题调整需同步）
-const INDICATOR_DURATION = 400;
-const INDICATOR_EASING = "cubic-bezier(0, 0, 0, 1)";
-const INDICATOR_STRETCH = 1.75;
-
 /** 收起态外包 tooltip；展开态标签已可见 */
 function railTip(expanded: boolean, label: string, node: ReactElement): ReactNode {
   if (expanded) return node;
@@ -140,8 +133,8 @@ export function ActivityBar() {
   const indicatorRef = useRef<HTMLDivElement>(null);
 
   // 指示条定位与位移动画（2026-08-29 用户指令：切换时位移到新条目并
-  // 经历拉长再缩短）：目标条目变化时从当前视觉位置滑向新位置，中途
-  // scaleY 拉长再收短（WAAPI 关键帧——transition 做不了中途形变）。
+  // 经历拉长再缩短；2026-09-01 起动效参数与第二层共用 indicatorMotion）：
+  // 目标条目变化时从当前视觉位置滑向新位置，中途 scaleY 拉长再收短。
   // 初次定位与系统「减弱动态效果」时直接就位。transform/visibility 由
   // JS 写入（指示条是共享元素，不随条目重渲染）。
   useLayoutEffect(() => {
@@ -155,31 +148,8 @@ export function ActivityBar() {
     }
     // 条目内偏移 10px = (36-16)/2，与原 :before 指示条位置一致；
     // offsetTop 以 rail（position:relative）为包含块
-    const target = active.offsetTop + 10;
-    const readCurrentY = (): number | null => {
-      const m = getComputedStyle(indicator).transform.match(/matrix.*\((.+)\)/);
-      if (!m) return null;
-      const parts = m[1]?.split(",").map(Number) ?? [];
-      // matrix(a,b,c,d,tx,ty)：ty 即当前 translateY（动画运行中亦反映实时值）
-      const ty = parts[5];
-      return parts.length >= 6 && ty !== undefined ? ty : null;
-    };
-    const current = readCurrentY();
     indicator.style.visibility = "visible";
-    if (current === null || current === target) {
-      indicator.style.transform = `translateY(${target}px)`;
-      return;
-    }
-    indicator.style.transform = `translateY(${target}px)`;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    indicator.animate(
-      [
-        { transform: `translateY(${current}px) scaleY(1)` },
-        { transform: `translateY(${(current + target) / 2}px) scaleY(${INDICATOR_STRETCH})` },
-        { transform: `translateY(${target}px) scaleY(1)` },
-      ],
-      { duration: INDICATOR_DURATION, easing: INDICATOR_EASING },
-    );
+    moveIndicator(indicator, { x: 0, y: active.offsetTop + 10 });
   }, [pathname, railExpanded, contentExpanded]);
 
   useEffect(() => {

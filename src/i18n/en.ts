@@ -139,6 +139,7 @@ const en = {
     CMP: "Component",
     INT: "Interface",
     SEQ: "Interaction",
+    UI: "UI Spec",
     ADR: "Decision",
     RISK: "Risk",
     OQ: "Open Question",

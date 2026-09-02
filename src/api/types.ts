@@ -2,7 +2,8 @@
 // 实现期注记（2026-08-28）：tauri-specta generated 尚未包含这批命令（后端联调暂缓），
 // 类型暂由本文件承载；联调时以 generated 产物为准替换，feature 层不感知。
 
-/** 条目类型前缀（13 种，与类型一一绑定，INV-008） */
+/** 条目类型前缀（14 种，与类型一一绑定，INV-008）。UI 为 2026-09-01
+    用户指令升格（沿用 UI-xxx 索引体系，见 05-detailed-design/ui/README.md） */
 export const ITEM_TYPES = [
   "FR",
   "NFR",
@@ -13,6 +14,7 @@ export const ITEM_TYPES = [
   "CMP",
   "INT",
   "SEQ",
+  "UI",
   "ADR",
   "RISK",
   "OQ",
