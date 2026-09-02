@@ -18,6 +18,7 @@ import { EmptyState } from "../../../components/EmptyState";
 import { ErrorState } from "../../../components/ErrorState";
 import { ItemRow } from "../../../components/ItemRow";
 import { SkeletonRows } from "../../../components/Skeletons";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import {
   ITEM_STATUSES,
   ITEM_TYPES,
@@ -29,9 +30,6 @@ import {
 import { useItemsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限 1080；
-  // 左对齐无居中（patterns.md「页面容器与标题对齐」，2026-09-02）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   toolbar: {
     display: "flex",
     alignItems: "center",
@@ -52,6 +50,8 @@ const ALL = "all";
 
 export function ItemsTypePage() {
   const styles = useStyles();
+  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」）
+  const page = usePageContainerStyles("workbench");
   const { t } = useTranslation();
   const { projectId = "", type = "" } = useParams();
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ export function ItemsTypePage() {
 
   if (!knownType) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <EmptyState icon={<Search24Regular />} title={t("items.emptyTitle")} hint={t("items.emptyHint")} />
       </div>
     );
@@ -87,7 +87,7 @@ export function ItemsTypePage() {
 
   // 工具条常驻（2026-09-01 用户指令）：加载/错误/空态只替换列表区
   return (
-    <div className={styles.page}>
+    <div className={page}>
       <div className={styles.toolbar}>
         <Title2 className={styles.toolbarTitle}>{title}</Title2>
         <div className={styles.toolbarSpacer} />

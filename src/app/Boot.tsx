@@ -10,10 +10,12 @@ export function Boot() {
   const { data: projects } = useQuery({ queryKey: ["projects"], queryFn: listProjects });
 
   useEffect(() => {
-    if (!settings) return;
+    // 项目清单未就绪不判定「项目已删除」：settings 先于 projects 返回时，
+    // 过早校验会把合法项目地址误降级为 /projects，且跳转后本组件卸载无法纠正。
+    if (!settings || !projects) return;
     let target = settings.lastLocation ?? "/projects";
     const m = target.match(/^\/projects\/([^/]+)/);
-    if (m && !projects?.some((p) => p.id === m[1])) target = "/projects";
+    if (m && !projects.some((p) => p.id === m[1])) target = "/projects";
     navigate(target, { replace: true });
   }, [settings, projects, navigate]);
 

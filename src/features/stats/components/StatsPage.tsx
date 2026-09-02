@@ -23,6 +23,7 @@ import { ErrorState } from "../../../components/ErrorState";
 import { PageTitle } from "../../../components/PageTitle";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { ITEM_STATUSES, TASK_STATUSES } from "../../../api/types";
 import { useProjectStateQuery, useRecentRevisionsQuery } from "../queries";
 import { ActivityChart } from "./ActivityChart";
@@ -47,9 +48,6 @@ const toggled = (key: string, hidden: ReadonlySet<string>): ReadonlySet<string> 
 };
 
 const useStyles = makeStyles({
-  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限 1080；
-  // 左对齐无居中（patterns.md「页面容器与标题对齐」，2026-09-02）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   // 独占一栏的内容卡（最近修订时间线）
   sectionCard: {
     display: "flex",
@@ -100,6 +98,8 @@ const useStyles = makeStyles({
 
 export function StatsPage() {
   const styles = useStyles();
+  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」）
+  const page = usePageContainerStyles("workbench");
   const lift = useCardLiftStyles();
   const { t } = useTranslation();
   const { projectId = "" } = useParams();
@@ -119,7 +119,7 @@ export function StatsPage() {
 
   if (state.isPending) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <PageTitle>{t("stats.title")}</PageTitle>
         <SkeletonRows rows={8} />
       </div>
@@ -127,7 +127,7 @@ export function StatsPage() {
   }
   if (state.error) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <ErrorState error={state.error} onRetry={() => void state.refetch()} />
       </div>
     );
@@ -138,7 +138,7 @@ export function StatsPage() {
 
   if (isEmpty) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <PageTitle>{t("stats.title")}</PageTitle>
         <EmptyState icon={<History24Regular />} title={t("stats.emptyTitle")} hint={t("stats.emptyHint")} />
       </div>
@@ -184,7 +184,7 @@ export function StatsPage() {
   ];
 
   return (
-    <div className={styles.page}>
+    <div className={page}>
       <PageTitle>{t("stats.title")}</PageTitle>
 
       {/* 状态统计卡片：环形图（环心总量）+ 下方状态图例（彩色计数清单） */}

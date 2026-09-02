@@ -23,14 +23,12 @@ import { PageTitle } from "../../../components/PageTitle";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { useCardLiftStyles } from "../../../components/useCardLiftStyles";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { useUiStore } from "../../../stores/ui";
 import { useProjectsQuery } from "../queries";
 import { ProjectStats } from "./ProjectStats";
 
 const useStyles = makeStyles({
-  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限 960；
-  // 左对齐无居中（patterns.md「页面容器与标题对齐」，2026-09-02）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1224px" },
   toolbar: {
     display: "flex",
     alignItems: "center",
@@ -68,6 +66,8 @@ const useStyles = makeStyles({
 
 export function ProjectsPage() {
   const styles = useStyles();
+  // 页面容器：list 族，内容宽上限 960（patterns.md「页面容器与标题对齐」）
+  const page = usePageContainerStyles("list");
   const lift = useCardLiftStyles();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -87,7 +87,7 @@ export function ProjectsPage() {
 
   if (isPending) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <PageTitle>{t("projects.title")}</PageTitle>
         <SkeletonRows rows={4} />
       </div>
@@ -95,7 +95,7 @@ export function ProjectsPage() {
   }
   if (error) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <ErrorState error={error} onRetry={() => void refetch()} />
       </div>
     );
@@ -104,7 +104,7 @@ export function ProjectsPage() {
   const empty = data.length === 0;
 
   return (
-    <div className={styles.page}>
+    <div className={page}>
       <div className={styles.toolbar}>
         <Title2 className={styles.toolbarTitle}>{t("projects.title")}</Title2>
         <div className={styles.toolbarSpacer} />

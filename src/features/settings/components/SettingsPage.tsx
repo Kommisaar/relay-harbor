@@ -11,18 +11,19 @@ import {
 } from "@fluentui/react-components";
 import type { AppSettings, LanguageSetting, ThemeSetting } from "../../../api/types";
 import { PageTitle } from "../../../components/PageTitle";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { useSettingsQuery, useUpdateSettings } from "../queries";
 
 const useStyles = makeStyles({
-  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限 640；
-  // 左对齐无居中（patterns.md「页面容器与标题对齐」，2026-09-02）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "904px" },
   card: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalM, marginBottom: tokens.spacingVerticalL },
   field: { display: "grid", gridTemplateColumns: "160px 220px", alignItems: "center", gap: tokens.spacingHorizontalM },
 });
 
 export function SettingsPage() {
   const styles = useStyles();
+  // 页面容器：settings 族，内容宽上限 640；无侧栏左栏仅活动栏 48
+  // （patterns.md「页面容器与标题对齐」）
+  const page = usePageContainerStyles("settings");
   const { t } = useTranslation();
   const { data: settings } = useSettingsQuery();
   const update = useUpdateSettings();
@@ -45,7 +46,7 @@ export function SettingsPage() {
   ];
 
   return (
-    <div className={styles.page}>
+    <div className={page}>
       <PageTitle>{t("settings.title")}</PageTitle>
 
       <Card className={styles.card}>

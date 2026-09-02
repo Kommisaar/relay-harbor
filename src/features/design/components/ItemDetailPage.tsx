@@ -25,14 +25,11 @@ import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { MarkdownBody } from "../../../components/MarkdownBody";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import type { ImpactEntry, ItemType, RelationEntry, RelationType } from "../../../api/types";
 import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限
-  // 1080（2026-09-02 用户指令自 860 加宽）；左对齐无居中
-  // （patterns.md「页面容器与标题对齐」）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   back: { marginBottom: tokens.spacingVerticalS, display: "inline-flex", alignItems: "center", gap: "6px" },
   header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
   titleRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap" },
@@ -60,6 +57,8 @@ const useStyles = makeStyles({
 
 export function ItemDetailPage() {
   const styles = useStyles();
+  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」）
+  const page = usePageContainerStyles("workbench");
   const { t } = useTranslation();
   const { projectId = "", code = "" } = useParams();
   const navigate = useNavigate();
@@ -92,14 +91,14 @@ export function ItemDetailPage() {
 
   if (detail.isPending) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <SkeletonRows rows={10} />
       </div>
     );
   }
   if (detail.error) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <ErrorState error={detail.error} onRetry={() => void detail.refetch()} />
       </div>
     );
@@ -110,7 +109,7 @@ export function ItemDetailPage() {
   const bodyMd = viewed ? viewed.snapshot.bodyMd : item.bodyMd;
 
   return (
-    <article className={styles.page}>
+    <article className={page}>
       {/* 面包屑返回（UI-015）→ 所属类型页（2026-09-01 类型页拆分） */}
       <FluentLink
         as="a"

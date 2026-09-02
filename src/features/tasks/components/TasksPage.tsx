@@ -20,13 +20,14 @@ import { SkeletonBoard } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { useCardLiftStyles } from "../../../components/useCardLiftStyles";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import type { TaskCard } from "../../../api/types";
 import { useTaskBoardQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // 左 200 与各页统一（patterns.md「页面容器与标题对齐」，2026-09-02）
+  // 边距走共享 usePageContainerStyles（board 族，patterns.md「页面容器与标题对齐」）；
+  // 本类只承担看板版面：不限宽、占满内容区高的纵向 flex
   page: {
-    padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`,
     height: "100%",
     display: "flex",
     flexDirection: "column",
@@ -93,6 +94,8 @@ function BoardCard({ task, projectId }: { task: TaskCard; projectId: string }) {
 
 export function TasksPage() {
   const styles = useStyles();
+  // 页面容器边距（board 族，patterns.md「页面容器与标题对齐」）与看板版面合并
+  const page = mergeClasses(usePageContainerStyles("board"), styles.page);
   const { t } = useTranslation();
   const { projectId = "" } = useParams();
   const { data, isPending, error, refetch } = useTaskBoardQuery(projectId);
@@ -100,7 +103,7 @@ export function TasksPage() {
 
   if (isPending) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <PageTitle>{t("tasks.title")}</PageTitle>
         <SkeletonBoard />
       </div>
@@ -108,7 +111,7 @@ export function TasksPage() {
   }
   if (error) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <ErrorState error={error} onRetry={() => void refetch()} />
       </div>
     );
@@ -121,7 +124,7 @@ export function TasksPage() {
     !needle || task.code.toLowerCase().includes(needle) || task.title.toLowerCase().includes(needle);
 
   return (
-    <div className={styles.page}>
+    <div className={page}>
       <div className={styles.toolbar}>
         <Title2 className={styles.toolbarTitle}>{t("tasks.title")}</Title2>
         <div className={styles.toolbarSpacer} />

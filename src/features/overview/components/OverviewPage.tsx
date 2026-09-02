@@ -23,13 +23,10 @@ import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { MarkdownBody } from "../../../components/MarkdownBody";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
+import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { useProjectOverviewQuery, useProjectOverviewRevisionsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // article 形态与条目详情页同口径：maxWidth 含左右 padding 264（左 200/右 64）
-  // （左 200/右 64），内容宽上限 1080（2026-09-02 用户指令自 860 加宽）；
-  // 左对齐无居中（patterns.md「页面容器与标题对齐」）
-  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
   titleRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap" },
   metaRow: {
@@ -44,6 +41,9 @@ const useStyles = makeStyles({
 
 export function OverviewPage() {
   const styles = useStyles();
+  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」；
+  // article 形态与条目详情页同口径）
+  const page = usePageContainerStyles("workbench");
   const { t } = useTranslation();
   const { projectId = "" } = useParams();
   const doc = useProjectOverviewQuery(projectId);
@@ -53,14 +53,14 @@ export function OverviewPage() {
 
   if (doc.isPending) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <SkeletonRows rows={10} />
       </div>
     );
   }
   if (doc.error) {
     return (
-      <div className={styles.page}>
+      <div className={page}>
         <ErrorState error={doc.error} onRetry={() => void doc.refetch()} />
       </div>
     );
@@ -71,7 +71,7 @@ export function OverviewPage() {
   const bodyMd = viewed ? viewed.snapshot.bodyMd : data.bodyMd;
 
   return (
-    <article className={styles.page}>
+    <article className={page}>
       {/* 头部：文档标题 + rN·操作者·相对时间（形态对齐条目详情 UI-016） */}
       <header className={styles.header}>
         <div className={styles.titleRow}>
