@@ -22,8 +22,8 @@ export const ITEM_TYPES = [
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
 
-/** 非任务条目状态机（03 领域模型：三活态 + 双终态） */
-export const ITEM_STATUSES = ["draft", "in_review", "confirmed", "cancelled", "superseded"] as const;
+/** 非任务条目状态机（03 领域模型：三活态 + 三终态） */
+export const ITEM_STATUSES = ["draft", "in_review", "confirmed", "cancelled", "superseded", "deprecated"] as const;
 export type ItemStatus = (typeof ITEM_STATUSES)[number];
 
 /** 任务状态机（DOM-006） */
@@ -107,11 +107,19 @@ export interface TaskBoard {
   columns: TaskBoardColumn[];
 }
 
-/** 项目概况（get_project_state：各类型/状态计数） */
+/** 逐日计数（get_project_state.revisionsByDay，UI-011 活动图，2026-09-02；原名修订热力图） */
+export interface DayCount {
+  /** 本地日期 YYYY-MM-DD */
+  date: string;
+  count: number;
+}
+
+/** 项目概况（get_project_state：各类型/状态计数 + 近 182 天逐日修订计数） */
 export interface ProjectState {
   byType: Partial<Record<ItemType, number>>;
   itemByStatus: Record<ItemStatus, number>;
   taskByStatus: Record<TaskStatus, number>;
+  revisionsByDay: DayCount[];
 }
 
 /** 概览页最近修订（list_recent_revisions，FR-018/UI-011） */
@@ -122,6 +130,34 @@ export interface RecentRevision {
   actor: string;
   summary: string;
   changedAt: number;
+}
+
+/** 项目概览文档（get_project_overview，UI-035，2026-09-02 新增，同日
+    改版 article 文档形态）：每项目一篇可维护 Markdown 文档，Agent 经
+    MCP 修订、UI 只读渲染，内容为项目数据不参与 i18n。返回当前版正文
+    与头部元信息（一次取齐） */
+export interface ProjectOverviewDoc {
+  title: string;
+  bodyMd: string;
+  revisionNo: number;
+  /** 本地用户或 Agent 会话标识 */
+  actor: string;
+  summary: string;
+  changedAt: number;
+}
+
+/** 项目概览修订（list_project_overview_revisions，BR-004 不可变追加）。
+    快照含标题/正文，版本切换不另发命令（同 get_item_revisions
+    一次取齐策略）；概览非条目——无类型/状态/元数据字段 */
+export interface OverviewRevision {
+  revisionNo: number;
+  actor: string;
+  summary: string;
+  changedAt: number;
+  snapshot: {
+    title: string;
+    bodyMd: string;
+  };
 }
 
 export interface ImpactEntry {

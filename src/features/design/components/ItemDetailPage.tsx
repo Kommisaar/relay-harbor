@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import Markdown from "react-markdown";
 import {
   Badge,
   Divider,
@@ -24,12 +23,16 @@ import { StatusBadge } from "../../../components/StatusBadge";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
+import { MarkdownBody } from "../../../components/MarkdownBody";
+import { RevisionTimeline } from "../../../components/RevisionTimeline";
 import type { ImpactEntry, ItemType, RelationEntry, RelationType } from "../../../api/types";
 import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 860 口径
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "908px", margin: "0 auto" },
+  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限
+  // 1080（2026-09-02 用户指令自 860 加宽）；左对齐无居中
+  // （patterns.md「页面容器与标题对齐」）
+  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   back: { marginBottom: tokens.spacingVerticalS, display: "inline-flex", alignItems: "center", gap: "6px" },
   header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
   titleRow: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, flexWrap: "wrap" },
@@ -41,7 +44,6 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusSmall,
     fontSize: tokens.fontSizeBase200,
   },
-  body: { lineHeight: 1.7 },
   section: { marginTop: tokens.spacingVerticalXXL },
   sectionTitle: { marginBottom: tokens.spacingVerticalS },
   entryRow: {
@@ -53,18 +55,6 @@ const useStyles = makeStyles({
   },
   mono: { fontFamily: tokens.fontFamilyMonospace },
   link: { color: tokens.colorBrandForeground1 },
-  revisionRow: {
-    width: "100%",
-    display: "grid",
-    gridTemplateColumns: "56px 1fr auto",
-    columnGap: tokens.spacingHorizontalM,
-    alignItems: "baseline",
-    padding: `${tokens.spacingVerticalXXS} ${tokens.spacingHorizontalS}`,
-    textAlign: "left",
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  revisionActive: { backgroundColor: tokens.colorNeutralBackground1Selected },
-  muted: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
   empty: { color: tokens.colorNeutralForeground3 },
 });
 
@@ -166,10 +156,8 @@ export function ItemDetailPage() {
         </MessageBar>
       ) : null}
 
-      {/* 正文：Markdown 只读渲染（CON-009，无编辑形态） */}
-      <div className={styles.body}>
-        <Markdown>{bodyMd}</Markdown>
-      </div>
+      {/* 正文：Markdown 只读渲染（CON-009，无编辑形态；共享件 patterns.md） */}
+      <MarkdownBody>{bodyMd}</MarkdownBody>
 
       {/* 关联区：按关系类型分组、上下游、可跳转（FR-010/UI-016） */}
       <section className={styles.section}>
@@ -235,38 +223,17 @@ export function ItemDetailPage() {
         )}
       </section>
 
-      {/* 修订历史：时间线 + 版本切换（FR-009/UI-017，无 diff） */}
+      {/* 修订历史：时间线 + 版本切换（FR-009/UI-017，无 diff；共享件 2026-09-02） */}
       <section className={styles.section}>
         <Divider>
           <Title3>{t("itemDetail.revisions")}</Title3>
         </Divider>
-        {(revisions.data ?? []).map((revision) => {
-          const isCurrent = revision.revisionNo === item.currentRevision;
-          const isViewing = viewedRevision === revision.revisionNo || (viewedRevision == null && isCurrent);
-          return (
-            <Button
-              key={revision.revisionNo}
-              appearance="subtle"
-              className={mergeClasses(styles.revisionRow, isViewing && styles.revisionActive)}
-              onClick={() => setViewedRevision(isCurrent ? null : revision.revisionNo)}
-            >
-              <span className={styles.mono}>
-                r{revision.revisionNo}
-                {isCurrent ? ` · ${t("common.current")}` : ""}
-              </span>
-              <span>
-                <Text size={300}>{revision.summary}</Text>
-                <span className={styles.muted}>
-                  {" "}
-                  · {revision.actor}
-                </span>
-              </span>
-              <span className={styles.muted}>
-                <RelativeTime timestamp={revision.changedAt} />
-              </span>
-            </Button>
-          );
-        })}
+        <RevisionTimeline
+          entries={revisions.data ?? []}
+          currentRevisionNo={item.currentRevision}
+          viewedRevisionNo={viewedRevision}
+          onSelect={setViewedRevision}
+        />
       </section>
     </article>
   );

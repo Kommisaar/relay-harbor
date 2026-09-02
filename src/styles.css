@@ -13,3 +13,84 @@ body {
 *::after {
   box-sizing: border-box;
 }
+
+/* Markdown 正文排版（2026-09-02，patterns.md「Markdown 正文」）：react-markdown
+   生成的子元素集合开放，Griffel 无法逐一建样式，作用域类 .md-body 为全局样式
+   的刻意例外（消费方：src/components/MarkdownBody）。变量取自 FluentProvider
+   注入的主题 CSS 变量，明暗主题自动跟随；只定排版口径，不硬编码色值 */
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4 {
+  margin: 1.2em 0 0.5em;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.md-body > :first-child {
+  margin-top: 0;
+}
+.md-body h1 {
+  font-size: 1.5em;
+}
+.md-body h2 {
+  font-size: 1.3em;
+}
+.md-body h3 {
+  font-size: 1.12em;
+}
+.md-body p {
+  margin: 0.6em 0;
+}
+.md-body ul,
+.md-body ol {
+  margin: 0.6em 0;
+  padding-left: 1.6em;
+}
+.md-body li {
+  margin: 0.25em 0;
+}
+.md-body blockquote {
+  margin: 0.8em 0;
+  padding: 0.2em 1em;
+  border-left: 3px solid var(--colorNeutralStroke2);
+}
+.md-body code {
+  font-family: var(--fontFamilyMonospace);
+  font-size: 0.9em;
+  background: var(--colorNeutralBackground2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+.md-body pre {
+  margin: 0.8em 0;
+  padding: 12px 14px;
+  background: var(--colorNeutralBackground2);
+  border-radius: var(--borderRadiusMedium);
+  overflow-x: auto;
+}
+.md-body pre code {
+  background: none;
+  padding: 0;
+}
+.md-body table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  width: 100%;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid var(--colorNeutralStroke2);
+  padding: 6px 12px;
+  text-align: left;
+}
+.md-body th {
+  background: var(--colorNeutralBackground2);
+}
+.md-body hr {
+  border: none;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  margin: 1.2em 0;
+}
+.md-body a {
+  color: var(--colorBrandForeground1);
+}

@@ -12,6 +12,7 @@ const COLOR: Record<AnyStatus, BadgeColor> = {
   confirmed: "success",
   cancelled: "danger",
   superseded: "important",
+  deprecated: "severe",
   todo: "subtle",
   doing: "brand",
   await_review: "warning",

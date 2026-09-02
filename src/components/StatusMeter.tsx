@@ -11,6 +11,7 @@ export const STATUS_METER_COLOR: Record<AnyStatus, string> = {
   confirmed: tokens.colorPaletteGreenForeground1,
   cancelled: tokens.colorPaletteRedForeground1,
   superseded: tokens.colorPalettePurpleForeground2,
+  deprecated: tokens.colorPaletteDarkOrangeForeground1,
   todo: tokens.colorNeutralForeground3,
   doing: tokens.colorBrandForeground1,
   await_review: tokens.colorPaletteMarigoldForeground2,

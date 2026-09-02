@@ -6,6 +6,8 @@ import type {
   AnyStatus,
   ItemType,
   ItemDetail,
+  OverviewRevision,
+  ProjectOverviewDoc,
   ProjectSummary,
   RelationType,
   Revision,
@@ -22,6 +24,8 @@ export interface MockProject {
   items: ItemDetail[];
   relations: { source: string; target: string; type: RelationType }[];
   revisions: Revision[];
+  overview: ProjectOverviewDoc;
+  overviewRevisions: OverviewRevision[];
 }
 
 interface ItemSpec {
@@ -89,6 +93,8 @@ const relayItems: ItemSpec[] = [
   { code: "FR-019", title: "条目批量基线确认", status: "cancelled", revision: 1, updated: daysAgo(9) },
   { code: "FR-020", title: "设计条目批量导入", status: "superseded", supersededBy: "FR-021", revision: 2, updated: daysAgo(7) },
   { code: "FR-021", title: "确定性导入与基线快照（M2）", status: "draft", revision: 1, updated: daysAgo(7) },
+  // 已废弃走查样本：确认后失效且无后继（2026-09-02 新增终态，被 CON-009 只读边界取代）
+  { code: "FR-022", title: "内置轻量编辑器", status: "deprecated", revision: 3, updated: daysAgo(3) },
 
   // NFR / BR / CON
   { code: "NFR-001", title: "数据可靠性（强杀不丢）", revision: 1, updated: daysAgo(6) },
@@ -251,6 +257,16 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
   return out.sort((a, b) => b.changedAt - a.changedAt);
 }
 
+function overviewRevision(
+  no: number,
+  actor: string,
+  summary: string,
+  changedAt: number,
+  doc: ProjectOverviewDoc,
+): OverviewRevision {
+  return { revisionNo: no, actor, summary, changedAt, snapshot: { title: doc.title, bodyMd: doc.bodyMd } };
+}
+
 const relayProject: MockProject = (() => {
   const items = relayItems.map((s) => makeItem("p-relay", s));
   const taskCount = items.filter((i) => i.itemType === "TASK").length;
@@ -262,7 +278,115 @@ const relayProject: MockProject = (() => {
     taskCount,
     updatedAt: Math.max(...items.map((i) => i.updatedAt)),
   };
-  return { summary, items, relations: relayRelations, revisions: revisionsFor("p-relay", items) };
+  // 项目概览文档（get_project_overview，UI-035，article 形态）：内容浓缩自
+  // 本项目 docs/design/00-overview/README.md（已确认基线），Agent 经 MCP
+  // 随基线演进维护；各版正文有实质差异，支撑版本切换走查
+  const r1Body = [
+    "## 定位",
+    "",
+    "RelayHarbor 是面向 AI 辅助开发流程的本地管理与追踪应用：把需求、设计、任务及其关系放入一个可校验、可查询、可视化的管理平面。",
+    "",
+    "## 重点解决的问题",
+    "",
+    "- 设计与任务散落在多个文档中，Agent 为定位单个条目需要加载过多上下文；",
+    "- 模型直接编辑文件时难以统一保证编号、状态、引用和并发一致性；",
+    "- 需求变更后，受影响的设计和任务缺少直观追踪；",
+    "- Markdown 适合审查，但不适合稳定承担复杂查询、状态迁移和关系图；",
+    "- 临时 MCP 进程退出后，可视化界面和本地管理能力随之消失。",
+  ].join("\n");
+  const r2Body = [
+    r1Body,
+    "",
+    "## 当前已明确方向",
+    "",
+    "- 产品形态为 Tauri 桌面应用，单实例 + 系统托盘常驻",
+    "- 业务写入唯一入口为 MCP，UI 只读并负责 Markdown 导出",
+    "- 数据库为唯一运行时事实来源，导出的 Markdown/JSON 仅为确定性快照",
+    "- UI 与 MCP 共用同一套领域规则、状态迁移和事务",
+    "",
+    "## 里程碑范围",
+    "",
+    "### M1 · Agent 写入平面 + 只读 UI",
+    "",
+    "- MCP 接入：本地受控 API（回环 + 令牌）与 mcp-bridge 连接器",
+    "- Agent 写入：项目、条目、状态迁移、关系与任务的全部管理操作",
+    "- 只读 UI：项目浏览、条目详情、关联展开、任务看板、影响定位",
+    "- Markdown 文档集导出（与 dev-toolkit 文档体系格式兼容）",
+    "- SQLite 存储、原子事务、乐观并发与不可变修订",
+    "",
+    "### M2 · 流程与交换",
+    "",
+    "- 基线确认流程与变更集预览界面",
+    "- Markdown / JSON 确定性导入与基线快照",
+    "- 依赖与追踪关系图可视化",
+  ].join("\n");
+  const r3Body = [
+    r1Body,
+    "",
+    "## 当前已明确方向",
+    "",
+    "- Tauri 桌面应用，单实例 + 系统托盘常驻（CON-006）",
+    "- 业务写入唯一入口为 MCP，UI 只读并负责 Markdown 导出（CON-009）",
+    "- 数据库为唯一运行时事实来源，导出的 Markdown/JSON 仅为确定性快照（OQ-001）",
+    "- UI 与 MCP 共用同一套领域规则、状态迁移和事务（ADR-002）",
+    "- 稳定显示编号（DOM-008），模型按编号读取条目，如 get_item(\"FR-001\")",
+    "- 首发 Windows 优先，代码保持跨平台边界（OQ-005）",
+    "",
+    "## 里程碑范围",
+    "",
+    "### M1 · Agent 写入平面 + 只读 UI",
+    "",
+    "- MCP 接入：本地受控 API（回环 + 令牌）与 mcp-bridge 连接器",
+    "- Agent 写入：项目、条目、状态迁移、关系与任务的全部管理操作",
+    "- 只读 UI：项目浏览、条目详情、关联展开、任务看板、影响定位",
+    "- Markdown 文档集导出（与 dev-toolkit 文档体系格式兼容）",
+    "- SQLite 存储、原子事务、乐观并发与不可变修订",
+    "",
+    "### M2 · 流程与交换",
+    "",
+    "- 基线确认流程与变更集预览界面",
+    "- Markdown / JSON 确定性导入与基线快照",
+    "- 依赖与追踪关系图可视化",
+    "",
+    "## 成功标准",
+    "",
+    "### M1 · 首版",
+    "",
+    "- Agent 可经 MCP 完成项目、条目、状态、关系与任务的全部管理写入",
+    "- 非法状态迁移、重复编号、悬空引用和任务依赖环会被拒绝",
+    "- 已确认条目不能被物理删除，只能取消、废弃或替代",
+    "- 用户可经只读界面浏览全部内容并导出 Markdown 文档集",
+    "- 关闭主窗口后应用仍在系统托盘运行，数据跨会话持久",
+    "",
+    "### M2 · 连接版追加",
+    "",
+    "- 基线确认流程与变更集预览界面可用",
+    "- Markdown / JSON 确定性导入与快照可用，便于 Git 审查与恢复",
+    "- 依赖与追踪关系图可视化可用",
+    "",
+    "## 主要风险",
+    "",
+    "| 风险 | 缓解 |",
+    "| --- | --- |",
+    "| 数据库取代 Markdown 后降低原生 Git 可读性 | 不可变修订 + 确定性快照 |",
+    "| 桌面应用与 Plugin 版本漂移 | 能力协商与兼容版本检查 |",
+    "| 本地接口被其他进程滥用 | 回环限制、随机端口、令牌与 Origin 校验 |",
+    "| 业务写入唯一依赖 MCP 通道 | 托盘常驻、bridge 自动拉起应用与明确失败提示 |",
+  ].join("\n");
+  const overview: ProjectOverviewDoc = {
+    title: "RelayHarbor 项目概览",
+    bodyMd: r3Body,
+    revisionNo: 3,
+    actor: "agent-session-3",
+    summary: "同步 00 基线：方向标注设计编号，补成功标准与主要风险",
+    changedAt: hoursAgo(30),
+  };
+  const overviewRevisions: OverviewRevision[] = [
+    overviewRevision(3, "agent-session-3", overview.summary, overview.changedAt, { ...overview, bodyMd: r3Body }),
+    overviewRevision(2, "agent-session-2", "补充方向与里程碑范围", daysAgo(5), { ...overview, bodyMd: r2Body }),
+    overviewRevision(1, "agent-session-1", "创建项目概览：定位与重点问题", daysAgo(12), { ...overview, bodyMd: r1Body }),
+  ];
+  return { summary, items, relations: relayRelations, revisions: revisionsFor("p-relay", items), overview, overviewRevisions };
 })();
 
 const zhsppyItems: ItemSpec[] = [
@@ -277,6 +401,63 @@ const zhsppyItems: ItemSpec[] = [
 const zhsppyProject: MockProject = (() => {
   const items = zhsppyItems.map((s) => makeItem("p-zhsppy", s));
   const taskCount = items.filter((i) => i.itemType === "TASK").length;
+  const zr1Body = [
+    "## 定位",
+    "",
+    "环评智能审核双项目之提取端：从环评报告书中提取识别项并维护审核规则数据，为规则端（zhspzs）评分提供结构化输入。",
+    "",
+    "## 重点解决的问题",
+    "",
+    "- 识别项散落在各项目评分表，口径不统一",
+    "- 人工摘录效率低且易漏项",
+    "- 审核规则与评分表覆盖度难以对照",
+  ].join("\n");
+  const zr2Body = [
+    zr1Body,
+    "",
+    "## 当前已明确方向",
+    "",
+    "- 识别项配置化管理，统一入库（CG_RECO_PROJ）",
+    "- SBD_/HJS_/DL_ 编号空间分治",
+    "- 与规则端经结构化数据衔接，不做双向写入",
+    "",
+    "## 里程碑范围",
+    "",
+    "### M1 · 提取端入库",
+    "",
+    "- 识别项配置化管理",
+    "- 审核规则入库",
+    "",
+    "### M2 · 规则端联调",
+    "",
+    "- 评分表覆盖度对比",
+    "- 规则端联调",
+    "",
+    "## 成功标准",
+    "",
+    "### M1 · 首版",
+    "",
+    "- 识别项可配置化维护",
+    "- 审核规则可入库检索",
+    "",
+    "## 主要风险",
+    "",
+    "| 风险 | 缓解 |",
+    "| --- | --- |",
+    "| 报告书格式差异导致提取遗漏 | 分项目维护识别词表并定期比对覆盖度 |",
+  ].join("\n");
+  const overview: ProjectOverviewDoc = {
+    title: "zhsppy 提取端项目概览",
+    bodyMd: zr2Body,
+    revisionNo: 2,
+    actor: "agent-session-2",
+    summary: "补方向、范围、成功标准与风险",
+    changedAt: daysAgo(2),
+  };
+  const overviewRevisions: OverviewRevision[] = [
+    overviewRevision(2, "agent-session-2", overview.summary, overview.changedAt, { ...overview, bodyMd: zr2Body }),
+    overviewRevision(1, "agent-session-1", "创建项目概览：定位与重点问题", daysAgo(9), { ...overview, bodyMd: zr1Body }),
+  ];
   return {
     summary: {
       id: "p-zhsppy",
@@ -294,6 +475,8 @@ const zhsppyProject: MockProject = (() => {
       { source: "UC-001", target: "BR-001", type: "traces" },
     ],
     revisions: revisionsFor("p-zhsppy", items),
+    overview,
+    overviewRevisions,
   };
 })();
 

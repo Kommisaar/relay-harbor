@@ -6,7 +6,8 @@
     "2026-08-28 UI 实现：i18next + react-i18next 准入（界面双语 FR-016/UI-004，用户确认按需引入）。",
     "2026-08-28 图表选型（用户确认）：概览图表采用 @ant-design/charts（评价 Fluent charts 不成熟，callout 字号缺陷）。",
     "2026-08-28 @ant-design/graphs 预准入：M2 关系图可视化采用（替代此前预留的 @xyflow）；M2 启动时再安装，当前不装避免未用依赖。",
-    "@fluentui/react-charts 已移出：2026-08-28 曾准入后被上述选型决定替代。"
+    "@fluentui/react-charts 已移出：2026-08-28 曾准入后被上述选型决定替代。",
+    "2026-09-02 概览页改版：remark-gfm 准入（UI-035 article 文档表格渲染；react-markdown v10 裸用无 GFM，维护型文档常含表格）。"
   ],
   "dependencies": [
     "@ant-design/charts",
@@ -20,6 +21,7 @@
     "react-dom",
     "react-markdown",
     "react-router-dom",
+    "remark-gfm",
     "zustand"
   ],
   "devDependencies": [

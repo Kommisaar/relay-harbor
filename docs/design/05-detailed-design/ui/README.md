@@ -22,7 +22,8 @@
 | UI-006 | 系统原生标题栏（Tauri 默认，不自绘） | app-shell |
 | UI-007 | 窗口默认 1280×800、最小 1024×640、可自由缩放；常规密度（假设） | app-shell |
 | UI-010 | 项目列表页由第二层导航「项目」承载，列表行/卡片双形态可切换 | pages/project-list |
-| UI-011 | 项目概览页为进入项目默认落地页：状态统计/类型分布/最近修订/阻塞提醒 | pages/project-overview |
+| UI-011 | 项目统计页（2026-09-02 用户指令自「项目概览页」更名并移居 `/projects/:id/stats`，index 落地页让位 UI-035；FR-018 统计语义不变）：状态统计/类型分布+活动图（2026-09-02 双卡并排；同日命名自修订热力图改活动图并移除月份/星期标注）/最近修订（2026-09-02 阻塞提醒卡片整个移除，阻塞信息由任务看板承担；最近修订独占一栏） | pages/project-stats |
+| UI-035 | 项目概览页为进入项目默认落地页（index，2026-09-02 用户指令新增，同日由结构化五卡改版为 **article 文档形态**）：每项目一篇可维护文档——头部（标题 + rN·操作者·时间）+ Markdown 正文 + 修订时间线版本切换（UI-017 同款，无 diff）；数据 get_project_overview + list_project_overview_revisions（INT-001 白名单 15→16），Agent 经 MCP 维护、UI 只读渲染 | pages/project-overview |
 | UI-012 | 条目按 14 类型拆独立子页面（items/type/:type），侧栏类型固定常驻（2026-09-01 用户指令修订，原手风琴聚合页移除；同日二次指令：UI-xxx 升格第 14 类型） | pages/items |
 | UI-013 | 条目标准行：编号+标题+状态徽章+修订号+最后更新时间 | pages/items |
 | UI-014 | 条目页内过滤工具条：状态过滤+关键词+排序（编号/更新时间） | pages/items |
@@ -49,7 +50,8 @@
 | 路由 | 页面 | 第二层导航态 | 承载 |
 | --- | --- | --- | --- |
 | `/projects` | 项目列表（总览） | 总览（全局位） | FR-008、UC-010 |
-| `/projects/:id/` | 项目概览（index） | 项目清单展开 · 概览 | FR-018、UC-010 |
+| `/projects/:id/` | 项目概览（index，UI-035） | 项目清单展开 · 项目概览 | UC-010（2026-09-02 新增） |
+| `/projects/:id/stats` | 项目统计 | 项目清单展开 · 项目统计 | FR-018、UC-010 |
 | `/projects/:id/items` | 重定向首个类型页 | 项目清单展开 · 类型 | FR-009、UC-011 |
 | `/projects/:id/items/type/:type` | 条目类型页（13 类型各一页） | 项目清单展开 · 对应类型 | FR-009、UC-011 |
 | `/projects/:id/items/:code` | 条目详情 | 项目清单展开 · 所属类型（激活） | FR-009/010/013、UC-011/012/015 |
@@ -69,7 +71,8 @@
 │◎ │────────────────│
 │  │ 项目            │
 │  │  relay-harbor   │
-│  │    ● 概览       │
+│  │    ● 项目概览   │
+│  │    ○ 项目统计   │
 │  │    ○ FR 功能需求 │
 │  │    ○ …（13 类型）│
 │  │    ○ 任务       │
@@ -137,6 +140,35 @@
   含 `list_design_docs`/`get_design_doc` 两命令与侧栏入口）整体
   回退，用户重议纳入方式；UI 升格部分不受影响，处置决策见
   open-questions.md OQ-007。
+- **概览页拆分：项目概览（新）+ 项目统计（更名）（2026-09-02
+  用户指令）**：原项目概览页更名「项目统计」移居
+  `/projects/:id/stats`（UI-011，FR-018 统计语义不变）；
+  新增项目概览页（UI-035）接管 index 落地页，内容对标
+  dev-toolkit facilitator 设计文档体系 00 项目概览 README
+  （目标/方向/范围/成功标准/风险五卡），新增只读命令
+  `get_project_overview`（INT-001 白名单 14→15）。第二层子导航
+  项目下首两项随之变为「项目概览 / 项目统计」。
+- **项目概览改版 article 文档形态（2026-09-02 用户指令，同日二次）**：
+  五卡结构化方案试用后，用户指出概览是「需要不断维护的文档，有
+  修订记录」，改为与条目（article）同构——每项目一篇 Markdown
+  文档：头部（标题 + rN·操作者·时间）+ 正文 + 修订时间线
+  （可切换历史版本，UI-017 同款，结构化契约
+  positioning/problems/… 废弃）。新增共享件 MarkdownBody /
+  RevisionTimeline（src/components，patterns.md 升为共享模式），
+  条目详情页同步迁移消费；get_project_overview 改文档形态返回 +
+  新增 list_project_overview_revisions（白名单 15→16）；
+  数据设计新增 project_overview / project_overview_revisions 两表
+  （不入 items 体系，BR-004 同规）。
+- **页面容器统一左对齐、标题同起点（2026-09-02 用户指令，同日六改）**：
+  废止各页 `margin: 0 auto` 居中——各页限宽不同，居中使标题起点随
+  窗口宽度与页面族漂移。全部页面容器改为左对齐，标题起点恒为
+  main 左缘 + 左 padding；随后五轮实览调参——左侧 padding
+  24→40→64→320→260→**200px**（右 padding 64 非对称），文章阅读列
+  （概览/详情）内容宽上限 860→**1080**。终版：maxWidth 含左右
+  padding 264（类型/统计/概览/详情 1344、项目列表 1224、设置
+  904、看板不限宽；maxWidth 只在宽窗生效，窄窗内容随区宽收缩）。
+  patterns.md 新增「页面容器与标题对齐」节；顺带修正
+  item-detail.md「全宽」措辞与实现的不一致。
 
 ## 全局约束（继承，不因 UI 设计改变）
 
@@ -151,7 +183,8 @@
 - [app-shell.md](app-shell.md)：骨架、导航、启动、主题与语言、窗口
 - [patterns.md](patterns.md)：徽章、空态、加载、错误、刷新
 - pages/：[project-list](pages/project-list.md) ｜
-  [project-overview](pages/project-overview.md) ｜ [items](pages/items.md) ｜
+  [project-overview](pages/project-overview.md)（UI-035） ｜
+  [project-stats](pages/project-stats.md) ｜ [items](pages/items.md) ｜
   [item-detail](pages/item-detail.md) ｜ [tasks](pages/tasks.md) ｜
   [search](pages/search.md)（暂缓） ｜ [export](pages/export.md) ｜
   [settings](pages/settings.md)

@@ -13,8 +13,9 @@ tokens，具体色值由主题令牌决定，不硬编码）：
 | 草稿 draft | 未定稿 | neutral（灰） |
 | 评审中 in_review | 待人审 | warning（琥珀） |
 | 已确认 confirmed | 定稿 | success（绿） |
-| 已取消 cancelled | 终态-废弃 | danger（红） |
+| 已取消 cancelled | 终态-未确认即放弃 | danger（红） |
 | 已替代 superseded | 终态-被替代 | brand（紫/品牌色区分） |
+| 已废弃 deprecated | 终态-确认后失效且无后继（2026-09-02 新增） | severe（橙红） |
 | 待办 todo | 任务未开始 | neutral |
 | 进行中 doing | 任务活跃 | brand（蓝） |
 | 待验收 await_review | 任务完成待审 | warning |
@@ -82,3 +83,47 @@ styles.css 声明全局 `box-sizing: border-box`（`*`/`::before`/`::after`）�
 （CJK min-content 仅一字宽，标题不可作为收缩方）；空间不足由过滤控件收缩
 让宽，下限 `minWidth: 120px`（须覆盖 Fluent Dropdown 默认 min-width 250px，
 否则全部弹性落在标题上导致竖排挤压）。
+
+## Markdown 正文（2026-09-02，UI-035 随概览文档改版升为共享模式）
+
+条目正文与项目概览正文统一由共享组件 `MarkdownBody`（`src/components/`，
+react-markdown + remark-gfm 封装；GFM 表格为维护型文档常态，react-markdown
+v10 裸用不解析，remark-gfm 白名单 2026-09-02 准入）渲染。排版规则不走
+Griffel：Markdown 生成的子元素集合开放，无法逐一建样式，故采用
+`src/styles.css` 作用域类 `.md-body`（全局样式的刻意例外，组件注释留痕），
+覆盖标题层级/列表/引用/代码块/表格/分隔线；组件本身只承担 article 语义
+与行高口径，不干预内容。消费方：条目详情（UI-017）、项目概览（UI-035）。
+
+## 修订时间线（2026-09-02，自条目详情抽为共享模式）
+
+修订历史区统一由共享组件 `RevisionTimeline` 呈现：自绘 subtle Button
+列表（Fluent v9 无现成 Timeline，不为此引依赖），每条 = 修订号（等宽）+
+摘要 · 操作者 + 相对时间，网格 `56px 1fr auto`；当前版
+colorNeutralBackground1Selected 高亮，点历史版切换、点当前版即回当前。
+版本切换的页面状态约定：`viewedRevision` 本地 state（null=当前），不入
+URL——刷新回当前版本（UI-017 既有行为，UI-035 沿用）；查看历史版时
+正文区上方 MessageBar info「正在查看 rN」+「回到当前」按钮
+（common.viewingHistory / backToCurrent）。消费方：条目详情（UI-017）、
+项目概览（UI-035）。
+
+## 页面容器与标题对齐（2026-09-02）
+
+全部页面容器统一口径：padding 上/下 `XL`（20）/ **左 200px（令牌
+外值；同日六改 24→40→64→320→260→200，用户逐轮实览调参定稿）/
+右 64px**（非对称）+ **左对齐，不做水平居中**（无 `margin: 0 auto`）
++ 按页面族限宽（border-box，含左右 padding 264；maxWidth 只在
+宽窗生效，窄窗内容随区宽收缩）：
+
+| 页面族 | maxWidth | 内容宽上限 |
+| --- | --- | --- |
+| 条目类型页 / 项目统计 / 项目概览 / 条目详情 | 1344px | 1080 |
+| 项目列表 | 1224px | 960 |
+| 设置 | 904px | 640 |
+| 任务看板 | 不限宽（`height: 100%` 纵向 flex） | 随区宽 |
+
+文章阅读列（概览/详情）内容宽上限自 860 上调 1080，与工作台族
+同宽（用户指令正文列太窄）。标题起点恒为「main 左缘 + 200px」，
+与窗口宽度无关。废止此前的 `margin: 0 auto` 居中版式：各页限宽
+不同，居中使标题起点随窗口宽度与页面族漂移（用户指令：所有页面
+标题对齐到同一起点；任务看板页本就未居中，即对齐基准）。
+AppShell main 自身无 padding，页面容器是唯一边距层。

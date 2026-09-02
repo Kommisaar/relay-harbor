@@ -24,7 +24,13 @@ import type { TaskCard } from "../../../api/types";
 import { useTaskBoardQuery } from "../queries";
 
 const useStyles = makeStyles({
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, height: "100%", display: "flex", flexDirection: "column" },
+  // 左 200 与各页统一（patterns.md「页面容器与标题对齐」，2026-09-02）
+  page: {
+    padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`,
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  },
   toolbar: { display: "flex", alignItems: "center", gap: tokens.spacingHorizontalM, marginBottom: tokens.spacingVerticalL },
   toolbarSpacer: { flex: 1 },
   // 见 patterns.md「工具条」：标题不收缩、过滤控件 120px 下限

@@ -7,8 +7,11 @@
 
 ## 责任
 
-- 只读视图：项目列表与切换、项目概览（统计/类型分布/最近修订/阻塞，
-  2026-08-28 新增）、条目列表（类型分组）与详情（Markdown 渲染、
+- 只读视图：项目列表与切换、项目概览（每项目一篇可维护文档，
+  article 形态：头部元信息 + Markdown 正文 + 修订时间线版本切换；
+  UI-035，2026-09-02 新增、同日自结构化五卡改版为文档形态）、
+  项目统计（统计/类型分布/活动图/最近修订，2026-08-28 新增；同日
+  自「概览页」更名移居 /stats）、条目列表（类型分组）与详情（Markdown 渲染、
   修订历史）、关联展开、任务看板（只读 + 阻塞标记 + 过滤）、
   影响定位清单、导出触发与进度、设置（搜索页 2026-08-28 暂缓移除，
   能力与契约保留）；
@@ -25,8 +28,9 @@
 
 ## 内部协作者
 
-features 划分（M1，2026-08-28 界面设计修订）：
-`projects`（列表/切换）、`overview`（项目概览统计）、
+features 划分（M1，2026-08-28 界面设计修订；2026-09-02 拆分修订）：
+`projects`（列表/切换）、`overview`（项目概览，UI-035）、
+`stats`（项目统计，2026-09-02 自 overview 更名拆出）、
 `design`（条目浏览/详情/修订/关联/影响）、`tasks`（只读看板）、
 `settings`（`search` feature 2026-08-28 用户指令随搜索页暂缓移除，
 规格保留 ui/pages/search.md）；每 feature 固定五件套
@@ -49,8 +53,9 @@ ui/pages/export.md）。
 - 依赖白名单：Fluent v9、TanStack Query、Zustand、react-markdown（渲染）、
   i18next + react-i18next（双语，2026-08-28 UI 实现期准入，FR-016/UI-004）
   ——**无编辑器、无 dnd**（只读定位，ADR-007）；@xyflow 待 M2；
-- 路由集中式（`app/router.tsx`，2026-09-01 修订）：`/projects`、
-  `/projects/:id/`（index=概览；`items`（重定向首个类型页）、
+- 路由集中式（`app/router.tsx`，2026-09-01 修订；2026-09-02 拆分）：
+  `/projects`、`/projects/:id/`（index=项目概览 UI-035；`stats`
+  （项目统计）、`items`（重定向首个类型页）、
   `items/type/:type`、`items/:code`、`tasks`）、`/settings`；
   条目按 14 类型拆独立子页面、聚合页取消（2026-09-01 用户指令；
   同日二次指令：UI-xxx 升格第 14 类型）；impact 为详情内嵌区

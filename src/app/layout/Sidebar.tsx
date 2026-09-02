@@ -1,12 +1,15 @@
 // 第二层项目导航栏（UI-001/002，2026-08-29 用户指令确认恢复停靠版）：
 // 内容=顶部「总览」全局位（全部项目列表页）+「项目」分组清单（各项目
-// 名称+条目/任务概况，选中项目就地展开子导航 概览/14 类型固定清单/
-// 任务——2026-09-01 用户指令：原「条目」聚合入口移除，类型块扁平拆分
-// 常驻，无条目类型同样出现；同日二次指令 UI-xxx 升格第 14 类型）；
-// 设置页不显示（无二级导航）。导出入口
-// 2026-08-28 用户指令移除（卡片弹出框），搜索 2026-08-28 用户指令
-// 暂缓移除。选中态为与第一层同款的共享指示条（位移动画，2026-09-01
-// 用户指令）+ 选中底色。
+// 名称+条目/任务概况，选中项目就地展开子导航 项目概览/项目统计/14 类型
+// 分组清单/任务——2026-09-02 用户指令：原「概览」项拆分，新增项目概览
+// （UI-035）接管 index 落地页，原页更名项目统计移居 stats；2026-09-01
+// 用户指令：原「条目」聚合入口移除，类型块扁平拆分常驻，无条目类型同样
+// 出现；同日二次指令 UI-xxx 升格第 14 类型；2026-09-02 用户指令：类型
+// 清单按设计阶段加组头小字，TASK 与任务面板不入组置尾）；设置页不显示
+// （无二级导航）。导出入口 2026-08-28 用户指令移除（卡片弹出框），搜索
+// 2026-08-28 用户指令暂缓移除。选中态为与第一层同款的共享指示条（位移
+// 动画，2026-09-01 用户指令）+ 选中底色。
+import { Fragment } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
@@ -14,8 +17,20 @@ import { Library24Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useLayoutEffect, useRef } from "react";
 import { listProjects } from "../../api/commands";
-import { ITEM_TYPES } from "../../api/types";
+import type { ItemType } from "../../api/types";
 import { moveIndicator } from "./indicatorMotion";
+
+// 子导航分组词表（2026-09-02 用户指令）：按设计阶段划分，与 docs/design/
+// 目录 00→06 同构；组头恒显示、不带计数。TASK 与任务面板不入组置尾。
+// 工具级静态词表（随 INV-008 类型集合），非项目数据。
+const TYPE_GROUPS: { key: string; types: readonly ItemType[] }[] = [
+  { key: "requirements", types: ["FR", "NFR", "BR", "CON"] },
+  { key: "useCases", types: ["UC"] },
+  { key: "domainModel", types: ["DOM"] },
+  { key: "architecture", types: ["CMP", "INT", "SEQ", "ADR"] },
+  { key: "detailedDesign", types: ["UI"] },
+  { key: "verification", types: ["RISK", "OQ"] },
+];
 
 const useStyles = makeStyles({
   root: {
@@ -96,6 +111,20 @@ const useStyles = makeStyles({
     marginLeft: tokens.spacingHorizontalL,
     fontSize: tokens.fontSizeBase200,
   },
+  // 类型分组组头（2026-09-02 用户指令）：非交互小字行，文字与二级项
+  // 对齐（缩进 L + 内边距 M，文字距侧栏缘 36px）。组间分隔线（同日
+  // 二次指令：先只加分隔线，不加粗不编号；三次指令收短）——组头行
+  // 上方 1px hairline，线两端各缩进 L 与条目文字对齐、右侧对称留白，
+  // TASK 尾部两行不加线
+  groupLabel: {
+    marginTop: tokens.spacingVerticalS,
+    marginLeft: tokens.spacingHorizontalL,
+    marginRight: tokens.spacingHorizontalL,
+    borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+    padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM} ${tokens.spacingVerticalXXS}`,
+    fontSize: tokens.fontSizeBase100,
+    color: tokens.colorNeutralForeground3,
+  },
 });
 
 export function Sidebar({ projectId }: { projectId: string | null }) {
@@ -167,18 +196,34 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
             </Link>
             {inProject ? (
               <div>
+                {/* 项目概览（index）+ 项目统计（stats）——2026-09-02 拆分 */}
                 <SubLink to={base} label={t("nav.overview")} active={pathname === base} />
-                {ITEM_TYPES.map((type) => {
-                  const to = `${base}/items/type/${type}`;
-                  return (
-                    <SubLink
-                      key={type}
-                      to={to}
-                      label={`${type} ${t(`type.${type}`)}`}
-                      active={pathname === to || activeDetailType === type}
-                    />
-                  );
-                })}
+                <SubLink to={`${base}/stats`} label={t("nav.stats")} active={pathname === `${base}/stats`} />
+                {/* 类型分组子导航（词表见 TYPE_GROUPS）：组头非交互，指示条
+                    仅按 aria-current 条目测量定位，不受组头行影响 */}
+                {TYPE_GROUPS.map((group) => (
+                  <Fragment key={group.key}>
+                    <div className={styles.groupLabel} aria-hidden="true">
+                      {t(`nav.group_${group.key}`)}
+                    </div>
+                    {group.types.map((type) => {
+                      const to = `${base}/items/type/${type}`;
+                      return (
+                        <SubLink
+                          key={type}
+                          to={to}
+                          label={`${type} ${t(`type.${type}`)}`}
+                          active={pathname === to || activeDetailType === type}
+                        />
+                      );
+                    })}
+                  </Fragment>
+                ))}
+                <SubLink
+                  to={`${base}/items/type/TASK`}
+                  label={`TASK ${t("type.TASK")}`}
+                  active={pathname === `${base}/items/type/TASK` || activeDetailType === "TASK"}
+                />
                 <SubLink
                   to={`${base}/tasks`}
                   label={t("nav.tasks")}

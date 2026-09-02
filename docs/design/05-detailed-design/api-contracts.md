@@ -29,7 +29,7 @@ MCP 协议层从同一批 Rust 类型导出。本文解释关键语义，不重�
 | `get_item` | project_id, code, include?: relations, revisions | 条目详情 | 修订默认只回当前，include 可选 |
 | `search_items` | project_id, q, type?, status? | 摘要列表 | 编号精确/前缀 + 标题正文匹配 |
 | `get_context` | project_id, code, depth? | 入边闭包结果（受影响集合） | 影响定位的 Agent 侧形态：derives/satisfies/depends 反向多跳，depth 默认 3、上限 10 |
-| `get_project_state` | project_id | 概况（各类型/状态计数） | 看板与总览数据源 |
+| `get_project_state` | project_id | 概况（各类型/状态计数 + `revisions_by_day` 近 182 天逐日修订计数，2026-09-02 概览页活动图新增，原名修订热力图） | 看板与总览数据源 |
 | `validate` | project_id | 问题清单 | M1：悬空、终态语义、反向对提示（03 待确认项之一） |
 
 ### 错误码与恢复方式
@@ -68,7 +68,13 @@ MCP 协议层从同一批 Rust 类型导出。本文解释关键语义，不重�
 
 ### 命令清单（完整白名单）
 
-查询：`list_projects`、`get_project_state`、`list_items`（按类型/状态/
+查询：`list_projects`、`get_project_state`、`get_project_overview`
+（project_id → 当前概览文档：title、body_md、revision_no、actor、
+summary、changed_at；2026-09-02 界面设计新增，项目概览页 UI-035
+支撑，同日由结构化五卡改版为 article 文档形态）、
+`list_project_overview_revisions`（project_id → 概览文档修订列表
+倒序，含快照 title/body_md——同 get_item_revisions 一次取齐策略；
+同日新增，白名单 15→16）、`list_items`（按类型/状态/
 过滤）、`get_item_detail`、`get_item_revisions`、`get_relations`、
 `get_task_board`、`search_items`、`get_impact`（影响定位）、
 `list_recent_revisions`（project_id, limit → 跨条目修订摘要倒序：

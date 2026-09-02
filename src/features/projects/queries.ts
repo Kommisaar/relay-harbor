@@ -6,8 +6,8 @@ export function useProjectsQuery() {
   return useQuery({ queryKey: ["projects"], queryFn: listProjects });
 }
 
-// 卡片统计（2026-08-28 增补，project-list.md）：get_project_state 与概览页共用同一
-// query key（缓存天然共享）。与 features/overview/queries.ts 的同名 hook 重复定义
+// 卡片统计（2026-08-28 增补，project-list.md）：get_project_state 与项目统计页共用同一
+// query key（缓存天然共享）。与 features/stats/queries.ts 的同名 hook 重复定义
 // 属刻意的目录边界合规——feature 之间禁止互相引用。
 export function useProjectStateQuery(projectId: string) {
   return useQuery({ queryKey: ["projects", projectId, "state"], queryFn: () => getProjectState(projectId) });

@@ -10,6 +10,8 @@ import type {
   ItemListFilter,
   ItemSummary,
   ItemType,
+  OverviewRevision,
+  ProjectOverviewDoc,
   ProjectState,
   ProjectSummary,
   RecentRevision,
@@ -43,6 +45,41 @@ export async function listProjects(): Promise<ProjectSummary[]> {
   return projects.map((p) => ({ ...p.summary }));
 }
 
+// 本地日期 YYYY-MM-DD（revisionsByDay 口径：自然日按本地时区）
+const dayKey = (t: number): string => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+// FNV-1a 32 位散列：热力图逐日计数用（projectId+日期播种，跨刷新确定性不变）
+const hash32 = (s: string): number => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+};
+
+// 近 182 天（26 周）逐日修订计数：确定性合成（mock 修订稀疏，撑不起日历
+// 网格观感），近期天数加权更热、约 1/4 天数为零；联调后由后端真实聚合
+const revisionsByDay = (projectId: string): ProjectState["revisionsByDay"] => {
+  const days: ProjectState["revisionsByDay"] = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  for (let recency = 181; recency >= 0; recency--) {
+    const t = today.getTime() - recency * 86_400_000;
+    const key = dayKey(t);
+    const raw = hash32(`${projectId}:${key}`);
+    let count = raw % 8;
+    count = count <= 1 ? 0 : count - 1; // 0..6，25% 零日
+    if (recency < 14 && count > 0) count += 1; // 近两周更活跃
+    if (recency === 0 && count === 0) count = 2; // 今天保底有活动
+    days.push({ date: key, count });
+  }
+  return days;
+};
+
 export async function getProjectState(projectId: string): Promise<ProjectState> {
   await delay();
   const project = findProject(projectId);
@@ -55,7 +92,21 @@ export async function getProjectState(projectId: string): Promise<ProjectState> 
     if (item.itemType === "TASK") taskByStatus[item.status as keyof ProjectState["taskByStatus"]] += 1;
     else itemByStatus[item.status as keyof ProjectState["itemByStatus"]] += 1;
   }
-  return { byType, itemByStatus, taskByStatus };
+  return { byType, itemByStatus, taskByStatus, revisionsByDay: revisionsByDay(projectId) };
+}
+
+export async function getProjectOverview(projectId: string): Promise<ProjectOverviewDoc> {
+  await delay();
+  const project = findProject(projectId);
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+  return { ...project.overview };
+}
+
+export async function listProjectOverviewRevisions(projectId: string): Promise<OverviewRevision[]> {
+  await delay();
+  const project = findProject(projectId);
+  if (!project) throw new Error("PROJECT_NOT_FOUND");
+  return [...project.overviewRevisions].sort((a, b) => b.revisionNo - a.revisionNo);
 }
 
 export async function listItems(projectId: string, filter: ItemListFilter = {}): Promise<ItemSummary[]> {

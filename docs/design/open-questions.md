@@ -98,3 +98,23 @@
     维持现状不纳入；回退留痕见 ui/README.md 修订记录）；
   - 追踪矩阵页暂缓（traceability 职责由条目关系 traces/satisfies
     承载，可视化页待需求出现再议）。
+
+## OQ-008 全局滚动条自定义样式
+
+- 状态：未决（2026-09-02 实现后同日滚回，重议中）
+- 来源阶段：05-detailed-design（2026-09-02 界面微调）
+- 影响：styles.css 全局样式、主题解析 DOM 钩子（AppProviders）、
+  各滚动区观感（侧栏/内容区/各页）
+- 是否阻塞：否（系统默认滚动条可用）
+- 最晚决策点：无硬性时点（纯观感项，可与任意 UI 轮次搭车实施）
+- 当前候选：
+  - 维持系统默认滚动条（现状）；
+  - 细线型 4px：常显细圆角拇指 + 透明轨道，hover 加深（VS Code 风）；
+  - 悬浮型 8px：拇指平时透明、悬停所在滚动区浮现、悬停拇指加深
+    （Windows 11 应用内观感；2026-09-02 曾实现后滚回）。
+- 结论：待议。已验证的技术结论备查：`::-webkit-scrollbar` 系伪元素
+  在开发浏览器与 Tauri WebView2（同为 Chromium）表现一致，上述任一
+  方案均可实现；暗色跟随需把 UI-003 解析主题写入 DOM（如
+  `documentElement[data-theme]`，Fluent v9 token 为 JS 值不进 CSS）；
+  不建议 `scrollbar-width`/`scrollbar-color` 标准属性（无圆角/透明
+  轨道控制力）与 `prefers-color-scheme`（手动主题档失配）。

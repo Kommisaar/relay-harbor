@@ -9,6 +9,8 @@
 erDiagram
     projects ||--o{ items : "拥有（编号空间隔离）"
     projects ||--o| project_settings : "每项目一行"
+    projects ||--o| project_overview : "每项目一篇（UI-035）"
+    project_overview ||--o{ project_overview_revisions : "产生"
     items ||--o{ revisions : "产生"
     items ||--o{ relations_outgoing : "作为源"
     items ||--o{ relations_incoming : "作为目标"
@@ -50,12 +52,32 @@ erDiagram
         uuid project_id PK
         json data
     }
+    project_overview {
+        uuid project_id PK
+        text title
+        text body_md
+        int current_revision "乐观并发凭据（同 items 语义）"
+        datetime updated_at
+    }
+    project_overview_revisions {
+        uuid project_id PK "与 revision_no 联合主键"
+        int revision_no PK
+        text actor "本地用户或 Agent 会话标识"
+        text summary
+        json content_snapshot "标题/正文"
+        datetime changed_at
+    }
 ```
 
 概念对应：projects=DOM-001，items=DOM-002（含 DOM-006 任务与
 superseded_by 字段），revisions=DOM-004，relations=DOM-003；
 display_code 即 DOM-008。ChangeSet（DOM-005）不落表——它是端口操作
 的参数，提交结果体现在 items/revisions/relations 的变更中。
+project_overview / project_overview_revisions 为项目概览文档
+（UI-035，2026-09-02 新增）：每项目一篇、Agent 经 MCP 修订、UI 只读；
+不入 items 体系——无类型前缀（DOM-008 不适用）、无状态机、无关系，
+独立成表避免污染 14 类型清单与计数；修订同样不可变追加（BR-004
+同规：无 UPDATE/DELETE），级联删除随项目（INV-010）。
 
 ## 标识与约束
 
@@ -82,7 +104,7 @@ display_code 即 DOM-008。ChangeSet（DOM-005）不落表——它是端口操�
 ## 状态、版本与审计字段
 
 - `items.status`：与 03 状态模型一致（非 TASK：draft/in_review/confirmed/
-  cancelled/superseded；TASK：todo/doing/await_review/done/cancelled）；
+  cancelled/superseded/deprecated；TASK：todo/doing/await_review/done/cancelled）；
 - `items.current_revision`：乐观并发凭据（BR-005）；每次提交 +1；
 - `revisions`：不可变追加表——无 UPDATE/DELETE 权限（迁移与测试断言），
   含 actor（BR-004 的审计承载）、content_snapshot（完整内容快照，历史
@@ -96,6 +118,8 @@ display_code 即 DOM-008。ChangeSet（DOM-005）不落表——它是端口操�
 - `items(project_id, item_type, status)`：类型分组列表、看板过滤；
 - `items(project_id, display_code)`：即唯一约束，编号精确读取；
 - `revisions(item_id, revision_no)`：即主键，历史顺序读取；
+- `project_overview_revisions(project_id, revision_no)`：即主键，
+  历史顺序读取；
 - `relations(target_id)`：入边查询——影响定位与关联展开的遍历热点；
 - `relations(source_id)`：出边查询。
 

@@ -29,8 +29,9 @@ import {
 import { useItemsQuery } from "../queries";
 
 const useStyles = makeStyles({
-  // border-box 迁移：maxWidth 含左右 padding 48，内容宽维持原 1080 口径
-  page: { padding: `${tokens.spacingVerticalXL} ${tokens.spacingHorizontalXXL}`, maxWidth: "1128px", margin: "0 auto" },
+  // border-box：maxWidth 含左右 padding 264（左 200/右 64），内容宽上限 1080；
+  // 左对齐无居中（patterns.md「页面容器与标题对齐」，2026-09-02）
+  page: { padding: `${tokens.spacingVerticalXL} 64px ${tokens.spacingVerticalXL} 200px`, maxWidth: "1344px" },
   toolbar: {
     display: "flex",
     alignItems: "center",
