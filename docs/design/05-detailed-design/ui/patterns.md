@@ -94,17 +94,43 @@ Griffel：Markdown 生成的子元素集合开放，无法逐一建样式，故�
 覆盖标题层级/列表/引用/代码块/表格/分隔线；组件本身只承担 article 语义
 与行高口径，不干预内容。消费方：条目详情（UI-017）、项目概览（UI-035）。
 
-## 修订时间线（2026-09-02，自条目详情抽为共享模式）
+## 修订时间线（2026-09-02 抽为共享模式；同日用户指令改浮动胶囊）
 
-修订历史区统一由共享组件 `RevisionTimeline` 呈现：自绘 subtle Button
-列表（Fluent v9 无现成 Timeline，不为此引依赖），每条 = 修订号（等宽）+
-摘要 · 操作者 + 相对时间，网格 `56px 1fr auto`；当前版
-colorNeutralBackground1Selected 高亮，点历史版切换、点当前版即回当前。
-版本切换的页面状态约定：`viewedRevision` 本地 state（null=当前），不入
-URL——刷新回当前版本（UI-017 既有行为，UI-035 沿用）；查看历史版时
-正文区上方 MessageBar info「正在查看 rN」+「回到当前」按钮
-（common.viewingHistory / backToCurrent）。消费方：条目详情（UI-017）、
-项目概览（UI-035）。
+修订历史统一由共享组件 `RevisionTimeline` 呈现，2026-09-02 用户指令
+由文末「Divider + 内联列表」区块改版为**右上角浮动胶囊**（原型参照
+ZCode 右上角「更改」胶囊，内部排版不照搬、以交互逻辑为准）：
+
+- **收起态胶囊**：圆角胶囊（高 40px + 14px 字——2026-09-02 用户指令
+  由 small 升级「太小了」、同日再指令加高；边框 + shadow8 浮起阴影；
+  内容 = 图标 + 「修订历史」+ 计数圆角徽标；**hover 时历史图标经
+  200ms 交叉渐变旋出为展开图标**（双层图标叠放，`--icon-hover` CSS
+  变量门控 + calc 派生透明度/旋转，规避 Griffel 后代选择器限制；
+  未随「减弱动态」降级——动效轻量，同活动图 canvas 动画留痕策略））；
+  sticky 悬浮于文档容器
+  顶部右侧，与页顶保持
+  **设定的最小距离**（top XXL 32——2026-09-02 用户三次指令纠正语义：
+  既非初版 8px 贴顶、也非锚定文档随页滚离；滚动时胶囊恒不低于此线，
+  视觉上钉在固定高度）；正在查看历史版时胶囊呈选中底色提示当前不在
+  当前版。
+- **展开面板**：点击胶囊开合（aria-expanded），面板 absolute 右对齐
+  悬于胶囊下方（elevation 阴影、不挤动正文）；**面板带 header**
+  （2026-09-02 用户指令，样例 ZCode「Git 工具」面板：标题「修订历史」
+  居左 + 右侧缩小按钮 ArrowMinimize，hairline 下缘与清单分隔；点缩小
+  按钮即收起面板，与点外/Esc 等效）；面板内沿用原行布局
+  （修订号等宽 + 摘要 · 操作者 + 相对时间，`auto 1fr auto`，当前版
+  colorNeutralBackground1Selected 高亮）。
+- **关闭逻辑**：点胶囊开合；点击面板外关闭；Esc 关闭；**选中修订后
+  收起**（正文换装与 MessageBar 反馈已足够，面板不遮挡阅读）。
+- **版本切换逻辑不变**（UI-017 既有约定）：`viewedRevision` 页面本地
+  state（null=当前），不入 URL——刷新回当前版本；点历史版切换、
+  点当前版即回当前；查看历史版时正文区上方 MessageBar info
+  「正在查看 rN」+「回到当前」按钮（common.viewingHistory /
+  backToCurrent）不变。
+
+仅 1 条修订时胶囊照常呈现（UI-031 同策略，不隐藏）；自绘组件
+（Fluent v9 无现成 Popover 需求匹配的浮动胶囊形态，点外关闭自实现，
+不为此引依赖；Fluent Popover 的锚定与滚动行为不合页顶锚定需求，
+同此理由自绘）。消费方：条目详情（UI-017）、项目概览（UI-035）。
 
 ## 页面容器与标题对齐（2026-09-02，同日七改）
 
@@ -143,3 +169,37 @@ URL——刷新回当前版本（UI-017 既有行为，UI-035 沿用）；查看
 （七页共用，页面族 variant 入参），页面不再各自手写
 padding/maxWidth。AppShell main 自身无 padding，页面容器是唯一
 边距层。
+
+## 侧栏条目入场动画（2026-09-02）
+
+第二层导航栏（UI-001，进入式两级呈现）的条目行、组头行、题行在
+**层级进入**时做一次入场浮现：透明度 0→1 + 纵向 `translateY(8px)→0`，
+时长 `durationNormal`（200ms）、缓动 `curveDecelerateMid`，按 DOM 序
+逐项错开 `16ms`、错开总量钳制 240ms（`animation-fill-mode: backwards`
+保证延迟期保持首帧不可见）。动画类整体落 styles.css 全局
+`.sidebar-enter`（.md-body 同款刻意例外）：Griffel 不透出 keyframes
+工具（不为其引 @griffel/react 直依赖），且**实测其 makeStyles 的
+@media 槽位不生成规则**（全页 83 条 media 规则均出自 makeResetStyles，
+留痕），动画声明与降级门控须一并落全局；错开经行内 CSS 变量
+`--enter-delay` 注入单一类，不逐项造类。
+
+触发语义（2026-09-02 用户指令「这些 item 做入场动画」，范围限第二层
+侧栏）：**只在层级切换时播一次**——进入层级 ⇄ 根层级、设置页往返
+（侧栏整体卸载重挂）时新条目集挂载即播；**层内导航不重播**（概览→
+统计→类型页，DOM 节点复用无重挂）；数据 refetch 重渲染亦不重播。
+两层级同规格（根层级项目清单行、进入层级返回行/题行/子导航/组头）。
+
+「减弱动态」降级：动画类由 `@media (prefers-reduced-motion:
+no-preference)` **反向门控**——仅在未偏好减弱动态时声明动画，开启
+偏好即不匹配规则、直接呈现终态。不在 Griffel 类内写 @media 覆盖
+（实测不生成规则，见上；亦不触碰「盒模型」节记载的 Griffel @media
+桶序坑——该坑仅在 @media 与 :hover 同抢 transform 时反向）。
+
+与共享指示条的互作（留痕）：条目 transform 不影响 `offsetTop/offsetLeft`
+布局值，指示条定位（indicatorMotion 测量的即布局位）不受入场动画
+干扰；指示条元素本身常驻不重挂，不参与入场。
+
+实现收敛：`src/styles.css`（`@keyframes sidebar-item-enter` +
+`.sidebar-enter` 类，no-preference 门控，令牌走主题 CSS 变量）+
+`src/app/layout/Sidebar.tsx`（mergeClasses 挂全局类 + `--enter-delay`
+错开变量），规格与触发语义以本节为准。

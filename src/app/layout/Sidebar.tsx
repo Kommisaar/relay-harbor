@@ -12,8 +12,9 @@
 // （留痕 app-shell.md）。设置页不显示（无二级导航）。导出 2026-08-28
 // 用户指令移除（卡片弹出框），搜索 2026-08-28 用户指令暂缓移除。
 // 选中态为与第一层同款的共享指示条（位移动画，2026-09-01 用户指令）
-// + 选中底色。
-import { Fragment } from "react";
+// + 选中底色。条目入场动画（2026-09-02 用户指令）：层级进入时逐项浮现
+// 一次，层内导航不重播——规格与触发语义见 patterns.md「侧栏条目入场动画」。
+import { Fragment, type CSSProperties } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
@@ -35,6 +36,19 @@ const TYPE_GROUPS: { key: string; types: readonly ItemType[] }[] = [
   { key: "detailedDesign", types: ["UI"] },
   { key: "verification", types: ["RISK", "OQ"] },
 ];
+
+// 入场动画（patterns.md「侧栏条目入场动画」，2026-09-02 用户指令）：
+// 淡入 + 8px 上移，逐项错开 16ms、错开总量钳制 240ms（过长清单只对
+// 首屏节奏负责，尾部项与首屏项同 delay 落位）。关键帧
+// sidebar-item-enter 落 styles.css 全局（Griffel 不透出 keyframes 工具）
+const ENTER_STAGGER_MS = 16;
+const ENTER_STAGGER_CAP_MS = 240;
+
+// 单一 enter 类经行内 CSS 变量取错开值，避免逐项造类
+function enterDelayStyle(index: number): CSSProperties {
+  const delay = Math.min(index * ENTER_STAGGER_MS, ENTER_STAGGER_CAP_MS);
+  return { "--enter-delay": `${delay}ms` } as CSSProperties;
+}
 
 const useStyles = makeStyles({
   root: {
@@ -64,6 +78,10 @@ const useStyles = makeStyles({
     textDecoration: "none",
     ":hover": { backgroundColor: tokens.colorNeutralBackground1Hover },
   },
+  // 条目入场动画不在此处：整体落 styles.css 全局类 sidebar-enter
+  // （patterns.md「侧栏条目入场动画」——Griffel 不透出 keyframes，实测
+  // makeStyles 的 @media 槽位不生成规则，「减弱动态」降级由其
+  // no-preference 门控承载）；本文件只经 enterDelayStyle 注入错开变量
   itemActive: {
     backgroundColor: tokens.colorNeutralBackground1Selected,
     ":hover": { backgroundColor: tokens.colorNeutralBackground1Selected },
@@ -181,20 +199,32 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
     });
   }, [pathname, projects]);
 
+  // 入场错开序号：按 JSX 书写顺序（= DOM 序）逐项递增；仅渲染期使用，
+  // 每次渲染重新计数（patterns.md「侧栏条目入场动画」触发语义）
+  let enterIndex = 0;
+  const nextEnter = () => enterDelayStyle(enterIndex++);
+
   return (
     <aside ref={asideRef} className={styles.root} aria-label={t("nav.projects")}>
       <div ref={indicatorRef} className={styles.indicator} aria-hidden="true" />
       {enteredProject ? (
         <>
           {/* 返回行：路由回 /projects，侧栏随之落回根层级（不存独立层级态） */}
-          <Link to="/projects" className={styles.item}>
+          <Link
+            to="/projects"
+            className={mergeClasses(styles.item, "sidebar-enter")}
+            style={nextEnter()}
+          >
             <span className={styles.itemIcon}>
               <ArrowLeft24Regular />
             </span>
             {t("common.backToList")}
           </Link>
           {/* 项目题行：非交互展示，不承载指示条与选中态（2026-09-02 用户指令） */}
-          <div className={mergeClasses(styles.item, styles.enteredHeader)}>
+          <div
+            className={mergeClasses(styles.item, styles.enteredHeader, "sidebar-enter")}
+            style={nextEnter()}
+          >
             <span className={styles.label}>
               <span className={mergeClasses(styles.projectName, styles.enteredName)}>
                 {enteredProject.name}
@@ -205,11 +235,15 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
               </span>
             </span>
           </div>
-          <SubLink to={base} label={t("nav.overview")} active={pathname === base} />
-          <SubLink to={`${base}/stats`} label={t("nav.stats")} active={pathname === `${base}/stats`} />
+          <SubLink to={base} label={t("nav.overview")} active={pathname === base} enterStyle={nextEnter()} />
+          <SubLink to={`${base}/stats`} label={t("nav.stats")} active={pathname === `${base}/stats`} enterStyle={nextEnter()} />
           {TYPE_GROUPS.map((group) => (
             <Fragment key={group.key}>
-              <div className={styles.groupLabel} aria-hidden="true">
+              <div
+                className={mergeClasses(styles.groupLabel, "sidebar-enter")}
+                style={nextEnter()}
+                aria-hidden="true"
+              >
                 {t(`nav.group_${group.key}`)}
               </div>
               {group.types.map((type) => {
@@ -220,6 +254,7 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
                     to={to}
                     label={`${type} ${t(`type.${type}`)}`}
                     active={pathname === to || activeDetailType === type}
+                    enterStyle={nextEnter()}
                   />
                 );
               })}
@@ -229,11 +264,13 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
             to={`${base}/items/type/TASK`}
             label={`TASK ${t("type.TASK")}`}
             active={pathname === `${base}/items/type/TASK` || activeDetailType === "TASK"}
+            enterStyle={nextEnter()}
           />
           <SubLink
             to={`${base}/tasks`}
             label={t("nav.tasks")}
             active={pathname.startsWith(`${base}/tasks`)}
+            enterStyle={nextEnter()}
           />
         </>
       ) : (
@@ -241,7 +278,8 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
           <nav aria-label={t("nav.overviewAll")}>
             <Link
               to="/projects"
-              className={mergeClasses(styles.item, onOverview && styles.itemActive)}
+              className={mergeClasses(styles.item, "sidebar-enter", onOverview && styles.itemActive)}
+              style={nextEnter()}
               aria-current={onOverview ? "page" : undefined}
             >
               <span className={styles.itemIcon}>
@@ -250,9 +288,16 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
               {t("nav.overviewAll")}
             </Link>
           </nav>
-          <div className={styles.section}>{t("nav.projects")}</div>
+          <div className={mergeClasses(styles.section, "sidebar-enter")} style={nextEnter()}>
+            {t("nav.projects")}
+          </div>
           {(projects ?? []).map((p) => (
-            <Link key={p.id} to={`/projects/${p.id}`} className={styles.item}>
+            <Link
+              key={p.id}
+              to={`/projects/${p.id}`}
+              className={mergeClasses(styles.item, "sidebar-enter")}
+              style={nextEnter()}
+            >
               <span className={styles.label}>
                 <span className={styles.projectName}>{p.name}</span>
                 <span className={styles.meta}>
@@ -268,12 +313,23 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
   );
 }
 
-function SubLink({ to, label, active }: { to: string; label: string; active: boolean }) {
+function SubLink({
+  to,
+  label,
+  active,
+  enterStyle,
+}: {
+  to: string;
+  label: string;
+  active: boolean;
+  enterStyle: CSSProperties;
+}) {
   const styles = useStyles();
   return (
     <Link
       to={to}
-      className={mergeClasses(styles.item, styles.subItem, active && styles.itemActive)}
+      className={mergeClasses(styles.item, styles.subItem, "sidebar-enter", active && styles.itemActive)}
+      style={enterStyle}
       aria-current={active ? "page" : undefined}
     >
       {label}

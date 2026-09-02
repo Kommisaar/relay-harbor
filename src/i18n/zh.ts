@@ -39,6 +39,8 @@ const zh = {
     noRelations: "无关联",
     noImpact: "无受影响条目",
     current: "当前",
+    revisionHistory: "修订历史",
+    collapsePanel: "收起面板",
     viewingHistory: "正在查看历史版本 r{{rev}}",
     backToCurrent: "回到当前版本",
     jumpTo: "跳转 {{code}}",
@@ -60,7 +62,6 @@ const zh = {
   },
   overview: {
     // 文档标题取项目数据（doc.title），不参与 i18n（UI-035 article 形态）
-    revisions: "修订历史",
   },
   stats: {
     title: "项目统计",
@@ -83,7 +84,6 @@ const zh = {
     supersededBy: "已替代 → {{code}}",
     relations: "关联",
     impact: "影响定位",
-    revisions: "修订历史",
     affectedDepth: "{{depth}} 跳",
     directionOut: "指出",
     directionIn: "指入",

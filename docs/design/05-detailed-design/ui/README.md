@@ -23,13 +23,13 @@
 | UI-007 | 窗口默认 1280×800、最小 1024×640、可自由缩放；常规密度（假设） | app-shell |
 | UI-010 | 项目列表页由第二层导航「项目」承载，列表行/卡片双形态可切换 | pages/project-list |
 | UI-011 | 项目统计页（2026-09-02 用户指令自「项目概览页」更名并移居 `/projects/:id/stats`，index 落地页让位 UI-035；FR-018 统计语义不变）：状态统计/类型分布+活动图（2026-09-02 双卡并排；同日命名自修订热力图改活动图并移除月份/星期标注）/最近修订（2026-09-02 阻塞提醒卡片整个移除，阻塞信息由任务看板承担；最近修订独占一栏） | pages/project-stats |
-| UI-035 | 项目概览页为进入项目默认落地页（index，2026-09-02 用户指令新增，同日由结构化五卡改版为 **article 文档形态**）：每项目一篇可维护文档——头部（标题 + rN·操作者·时间）+ Markdown 正文 + 修订时间线版本切换（UI-017 同款，无 diff）；数据 get_project_overview + list_project_overview_revisions（INT-001 白名单 15→16），Agent 经 MCP 维护、UI 只读渲染 | pages/project-overview |
+| UI-035 | 项目概览页为进入项目默认落地页（index，2026-09-02 用户指令新增，同日由结构化五卡改版为 **article 文档形态**）：每项目一篇可维护文档——头部（标题 + rN·操作者·时间）+ Markdown 正文 + 修订时间线版本切换（UI-017 同款浮动胶囊，无 diff）；数据 get_project_overview + list_project_overview_revisions（INT-001 白名单 15→16），Agent 经 MCP 维护、UI 只读渲染 | pages/project-overview |
 | UI-012 | 条目按 14 类型拆独立子页面（items/type/:type），侧栏类型固定常驻（2026-09-01 用户指令修订，原手风琴聚合页移除；同日二次指令：UI-xxx 升格第 14 类型） | pages/items |
 | UI-013 | 条目标准行：编号+标题+状态徽章+修订号+最后更新时间 | pages/items |
 | UI-014 | 条目页内过滤工具条：状态过滤+关键词+排序（编号/更新时间） | pages/items |
 | UI-015 | 条目详情独立全宽页（/items/:code），面包屑返回 | pages/item-detail |
 | UI-016 | 详情单栏滚动：头部→正文→关联→影响→修订 | pages/item-detail |
-| UI-017 | 修订时间线+版本切换（正文区切换显示选中版本快照，无 diff） | pages/item-detail |
+| UI-017 | 修订时间线+版本切换（2026-09-02 用户指令改**右上角浮动胶囊**：收起胶囊 sticky 右上、与页顶保持设定的最小距离、点击展开面板、选中收起/点外/Esc 关闭；正文区切换显示选中版本快照，无 diff） | pages/item-detail |
 | UI-018 | 影响定位为详情内嵌清单（按类型分组，逐项可跳转） | pages/item-detail |
 | UI-019 | 任务面板（原任务看板，2026-09-01 用户指令更名；FR-011 需求名不变）五列横排（待办/进行中/待验收/完成/已取消），横向滚动 | pages/tasks |
 | UI-020 | 任务卡片基础款：编号+标题+阻塞标记（来源编号可跳转） | pages/tasks |
@@ -182,6 +182,29 @@
   取代而消解），双层不合并、第二层常驻继续成立 ｜ app-shell.md
   第二层规格/状态表/骨架图、本文件 UI-001 行与路由表「第二层导航态」
   列同步改口径。
+- **第二层侧栏条目入场动画（2026-09-02 用户指令）**：层级进入
+  （根 ⇄ 进入层级、设置页往返重挂）时条目行/组头/题行自上而下
+  逐项浮现一次（淡入 + 8px 上移，200ms、逐项错开 16ms 钳制 240ms）；
+  层内导航不重播；「减弱动态」降级直接呈现终态；共享指示条按布局位
+  定位不受干扰 ｜ 规格落 patterns.md「侧栏条目入场动画」，实现收敛
+  styles.css（`@keyframes sidebar-item-enter` + `.sidebar-enter` 类，
+  no-preference 反向门控——实测 Griffel makeStyles @media 槽位不生成
+  规则，留痕）+ Sidebar.tsx（mergeClasses 挂类 + `--enter-delay`
+  错开变量）。
+- **修订时间线改右上角浮动胶囊（2026-09-02 用户指令，同日二次指令
+  改锚定）**：废止文末「Divider「修订历史」+ 内联列表」区块——共享
+  RevisionTimeline 改为右上角浮动胶囊（原型参照 ZCode「更改」胶囊，
+  内部排版不照搬、以交互逻辑为准）：收起 = 历史图标 + 「修订历史」+
+  修订数（查看历史版时选中底色），点击展开面板悬于胶囊下方（行布局
+  沿用原网格），点选历史版切正文、点当前版回当前，**选中后收起、
+  点外/Esc 关闭**；版本切换页面状态约定不变（viewedRevision 本地
+  state、刷新回当前、MessageBar 提示条保留）。定位经同日两次迭代定稿：
+  **sticky 悬浮、与页顶保持设定的最小距离（XXL 32）**——滚动时钉在
+  固定高度，初版 8px 贴顶与中版「锚定文档随页滚离」方案均废弃
+  （三次指令纠正语义）｜ 规格落 patterns.md
+  「修订时间线」，pages/item-detail 与 pages/project-overview 布局与
+  ASCII 同步；自绘点外关闭（Fluent Popover 锚定与滚动行为不合需求，
+  留痕）。
 
 ## 全局约束（继承，不因 UI 设计改变）
 

@@ -9,12 +9,10 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Button,
-  Divider,
   MessageBar,
   MessageBarActions,
   MessageBarBody,
   Title2,
-  Title3,
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
@@ -36,7 +34,6 @@ const useStyles = makeStyles({
     flexWrap: "wrap",
     color: tokens.colorNeutralForeground3,
   },
-  section: { marginTop: tokens.spacingVerticalXXL },
 });
 
 export function OverviewPage() {
@@ -72,6 +69,15 @@ export function OverviewPage() {
 
   return (
     <article className={page}>
+      {/* 修订历史浮动胶囊（2026-09-02 用户指令）：sticky 右上、不占文档流
+          （BR-004 不可变追加，无 diff；patterns.md「修订时间线」） */}
+      <RevisionTimeline
+        entries={revisions.data ?? []}
+        currentRevisionNo={data.revisionNo}
+        viewedRevisionNo={viewedRevision}
+        onSelect={setViewedRevision}
+      />
+
       {/* 头部：文档标题 + rN·操作者·相对时间（形态对齐条目详情 UI-016） */}
       <header className={styles.header}>
         <div className={styles.titleRow}>
@@ -98,19 +104,6 @@ export function OverviewPage() {
 
       {/* 正文：查看历史版时换装快照正文，其余只读渲染（CON-009） */}
       <MarkdownBody>{bodyMd}</MarkdownBody>
-
-      {/* 修订历史：时间线 + 版本切换（BR-004 不可变追加，无 diff） */}
-      <section className={styles.section}>
-        <Divider>
-          <Title3>{t("overview.revisions")}</Title3>
-        </Divider>
-        <RevisionTimeline
-          entries={revisions.data ?? []}
-          currentRevisionNo={data.revisionNo}
-          viewedRevisionNo={viewedRevision}
-          onSelect={setViewedRevision}
-        />
-      </section>
     </article>
   );
 }

@@ -38,6 +38,8 @@ const en = {
     noRelations: "No relations",
     noImpact: "No affected items",
     current: "Current",
+    revisionHistory: "Revision history",
+    collapsePanel: "Collapse panel",
     viewingHistory: "Viewing historical revision r{{rev}}",
     backToCurrent: "Back to current",
     jumpTo: "Go to {{code}}",
@@ -59,7 +61,6 @@ const en = {
   },
   overview: {
     // Doc title comes from project data (doc.title), not i18n (UI-035 article form)
-    revisions: "Revision history",
   },
   stats: {
     title: "Project statistics",
@@ -83,7 +84,6 @@ const en = {
     supersededBy: "Superseded → {{code}}",
     relations: "Relations",
     impact: "Impact analysis",
-    revisions: "Revisions",
     affectedDepth: "{{depth}} hops",
     directionOut: "outgoing",
     directionIn: "incoming",

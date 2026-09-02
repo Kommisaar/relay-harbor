@@ -94,3 +94,30 @@ body {
 .md-body a {
   color: var(--colorBrandForeground1);
 }
+
+/* 侧栏条目入场（2026-09-02，patterns.md「侧栏条目入场动画」）：Griffel
+   不透出 keyframes 工具，且实测其 makeStyles 的 @media 槽位不生成规则
+   （83 条 media 规则均出自 makeResetStyles），故动画类整体落全局样式
+   （.md-body 同款刻意例外），「减弱动态」以 no-preference 反向门控。
+   令牌取 FluentProvider 注入的主题 CSS 变量；错开延迟经行内
+   --enter-delay 注入（Sidebar.tsx enterDelayStyle） */
+@keyframes sidebar-item-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-enter {
+    animation-name: sidebar-item-enter;
+    animation-duration: var(--durationNormal);
+    animation-timing-function: var(--curveDecelerateMid);
+    animation-fill-mode: backwards;
+    animation-delay: var(--enter-delay, 0ms);
+  }
+}

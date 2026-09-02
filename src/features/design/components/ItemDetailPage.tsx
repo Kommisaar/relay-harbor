@@ -1,5 +1,5 @@
 // 条目详情页（UI-015～018，FR-009/010/013，UC-011/012/015）：独立全宽、单栏滚动
-// 头部 → 正文（Markdown 只读渲染）→ 关联 → 影响定位内嵌清单 → 修订时间线（版本切换）。
+// 修订历史浮动胶囊（sticky 右上）→ 头部 → 正文（Markdown 只读渲染）→ 关联 → 影响定位内嵌清单。
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -110,6 +110,15 @@ export function ItemDetailPage() {
 
   return (
     <article className={page}>
+      {/* 修订历史浮动胶囊（2026-09-02 用户指令改浮动胶囊）：sticky 右上、
+          不占文档流（FR-009/UI-017，无 diff；patterns.md「修订时间线」） */}
+      <RevisionTimeline
+        entries={revisions.data ?? []}
+        currentRevisionNo={item.currentRevision}
+        viewedRevisionNo={viewedRevision}
+        onSelect={setViewedRevision}
+      />
+
       {/* 面包屑返回（UI-015）→ 所属类型页（2026-09-01 类型页拆分） */}
       <FluentLink
         as="a"
@@ -220,19 +229,6 @@ export function ItemDetailPage() {
             </div>
           ))
         )}
-      </section>
-
-      {/* 修订历史：时间线 + 版本切换（FR-009/UI-017，无 diff；共享件 2026-09-02） */}
-      <section className={styles.section}>
-        <Divider>
-          <Title3>{t("itemDetail.revisions")}</Title3>
-        </Divider>
-        <RevisionTimeline
-          entries={revisions.data ?? []}
-          currentRevisionNo={item.currentRevision}
-          viewedRevisionNo={viewedRevision}
-          onSelect={setViewedRevision}
-        />
       </section>
     </article>
   );
