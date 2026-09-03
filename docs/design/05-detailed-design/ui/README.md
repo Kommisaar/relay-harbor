@@ -240,6 +240,13 @@
   同日查证 spacingVerticalXXL 令牌实值 24px，订正历史文档误标「32」；
   与样例 ZCode「更改」胶囊视口锚定一致）｜ 规格落 patterns.md
   「浮动胶囊面板」、pages/item-detail、pages/project-overview。
+- **分区标题点击展开/折叠（2026-09-03 用户指令，同日第六次）**：面板
+  小节标题行（修订历史/关联/影响定位）标题区可点击折叠/展开对应分区
+  （标题后 chevron 旋转指示（同日再指令移至标题后；三指令：默认隐藏、
+  hover/键盘聚焦渐显、hover 无底色）+ grid-template-rows 高度过渡 +
+  aria-expanded/aria-controls；**折叠分区 ≠ 收起面板**，与行内收起
+  按钮并排独立；状态为分区本地、不持久化）｜ 规格落 patterns.md
+  「浮动胶囊面板」面板分区条、pages/item-detail、pages/project-overview。
 
 ## 全局约束（继承，不因 UI 设计改变）
 

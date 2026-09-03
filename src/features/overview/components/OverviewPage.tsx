@@ -16,7 +16,7 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { ArrowExpand24Regular, History24Regular } from "@fluentui/react-icons";
+import { ArrowExpand16Regular, History16Regular } from "@fluentui/react-icons";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
@@ -78,8 +78,8 @@ export function OverviewPage() {
           （BR-004 不可变追加，无 diff；patterns.md「浮动胶囊面板」） */}
       <CapsulePanel
         label={t("common.revisionHistory")}
-        icon={<History24Regular />}
-        expandIcon={<ArrowExpand24Regular />}
+        icon={<History16Regular />}
+        expandIcon={<ArrowExpand16Regular />}
         badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
         active={viewedRevision != null}
         open={panelOpen}

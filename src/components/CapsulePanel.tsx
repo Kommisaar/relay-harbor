@@ -8,9 +8,9 @@
 // Esc/收起按钮关闭、面板内容超高内部滚动（min(60vh, 520px)，2026-09-03
 // 新增）。自绘不引依赖：Fluent Popover 的锚定与滚动行为不合页顶锚定
 // 需求（留痕）。
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button, Divider, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
-import { ArrowMinimize24Regular } from "@fluentui/react-icons";
+import { ArrowMinimize16Regular, ChevronRight16Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 
 export interface CapsulePanelProps {
@@ -29,6 +29,10 @@ export interface CapsulePanelProps {
   /** 面板内容：多分区纵向堆叠，分区用 CapsulePanelSection 分隔 */
   children: ReactNode;
 }
+
+// 小节标题行与行内收起按钮的统一高度（2026-09-03 用户指令：各分区
+// 标题行同高，标题到内容间隙一致）
+const CAPTION_ROW_HEIGHT = "28px";
 
 const useStyles = makeStyles({
   // 悬浮位：视口右上角 fixed 锚定（2026-09-03 用户指令，随图指认宽窗口
@@ -92,9 +96,15 @@ const useStyles = makeStyles({
   // （动效轻量，同活动图 canvas 动画留痕策略）
   iconSwap: {
     position: "relative",
-    width: "24px",
-    height: "24px",
+    // 图标 16×16（2026-09-03 用户指令「有点大了」：胶囊双层与面板收起
+    // 按钮统一换 16 系列字形（List/History/ArrowExpand/ArrowMinimize
+    // 16Regular，按 16px 专门设计优于缩放 24 字形），两态维持同尺寸）。
+    // 槽 20×20 对 16×16 无挤压；flexShrink 0 为防御保留——若未来换回
+    // 更大图标，避免重回「子层全 absolute → min-content 0 被压扁」老路
+    width: "16px",
+    height: "16px",
     display: "inline-flex",
+    flexShrink: "0",
   },
   iconLayer: {
     position: "absolute",
@@ -163,7 +173,30 @@ const useStyles = makeStyles({
   // 面板名称标题行已废除（2026-09-03 用户指令：样例展开面板无名称，
   // 原 2026-09-02 header 沿革见 patterns.md「浮动胶囊面板」）；收起
   // 按钮改由 CapsulePanelCollapseButton 置于首分区小节标题行右侧
-  collapseBtn: { minWidth: "28px", minHeight: "28px" },
+  // 收起按钮：subtle 外观的 hover/按下默认把前景切到品牌色（图标变蓝）
+  // ——用户指令保持中性灰、仅浅色 hover 底（2026-09-03）。根上三处钉
+  // Foreground2 仍拦不住图标槽：Fluent 另有后代规则
+  // （.hash:hover .fui-Button__icon → colorNeutralForeground2BrandHover，
+  // 特异性 (0,3,0) 高于根上的 (0,2,0)），故经根上 CSS 变量给图标
+  // subtree 供墨（同胶囊 --icon-hover 手法，避 Griffel 后代选择器限制）
+  collapseBtn: {
+    minWidth: CAPTION_ROW_HEIGHT,
+    minHeight: CAPTION_ROW_HEIGHT,
+    color: tokens.colorNeutralForeground2,
+    ":hover": {
+      color: tokens.colorNeutralForeground2,
+      "--collapse-icon-ink": tokens.colorNeutralForeground2,
+    },
+    ":active": {
+      color: tokens.colorNeutralForeground2,
+      "--collapse-icon-ink": tokens.colorNeutralForeground2,
+    },
+  },
+  // 图标墨色随变量：hover/按下钉中性灰，静止回退 currentColor（继承
+  // 根上的 Foreground2）
+  collapseIcon: {
+    color: "var(--collapse-icon-ink, currentColor)",
+  },
   // 内容滚动区（2026-09-03 新增：多分区叠加可能超一屏，超出内部滚动）
   panelBody: {
     overflowY: "auto",
@@ -184,6 +217,10 @@ const useStyles = makeStyles({
     alignItems: "center",
     justifyContent: "space-between",
     gap: tokens.spacingHorizontalS,
+    // 各分区标题行统一 28px 高（与行内收起按钮同高、文字垂直居中）：
+    // 首分区行此前被按钮撑高致「标题→内容」间隙 6px、其余分区 2px
+    // 不一致（2026-09-03 用户指令统一）
+    minHeight: CAPTION_ROW_HEIGHT,
     marginTop: tokens.spacingVerticalS,
     marginBottom: tokens.spacingVerticalXXS,
     paddingLeft: `calc(${tokens.spacingHorizontalL} + ${tokens.spacingHorizontalS})`,
@@ -195,6 +232,75 @@ const useStyles = makeStyles({
     paddingLeft: tokens.spacingHorizontalL,
     paddingRight: tokens.spacingHorizontalL,
     paddingBottom: tokens.spacingVerticalS,
+  },
+  // 分区标题切换按钮（2026-09-03 用户指令：点击展开/折叠分区；同日
+  // 再指令 chevron 移至标题后）：标题区独立 disclosure 按钮，hover
+  // 浅色底不改前景（同收起按钮手法）；标题文字起于 24px 对齐线，
+  // chevron 跟随其后不占前导位置
+  captionToggleBtn: {
+    display: "flex",
+    alignItems: "center",
+    gap: tokens.spacingHorizontalXS,
+    flex: 1,
+    minWidth: 0,
+    alignSelf: "stretch",
+    // 覆盖原生 button 的 UA 默认 padding-left(6px)——否则标题被推出
+    // 24px 对齐线（实测恰 +6px）
+    paddingLeft: 0,
+    paddingRight: tokens.spacingHorizontalXS,
+    border: "none",
+    background: "transparent",
+    color: "inherit",
+    textAlign: "left",
+    // 不设手型（2026-09-03 用户指令「分区标题先不添加手型」）：
+    // 原生 button 在 cursor:auto 下本就是箭头，维持默认
+    borderRadius: tokens.borderRadiusSmall,
+    // hover/键盘聚焦置变量驱动 chevron 渐显（2026-09-03 用户指令三改：
+    // 默认隐藏箭头、hover 才显示，并移除 hover 底色）——同胶囊
+    // --icon-hover 的 var 门控手法（避 Griffel 后代选择器限制）
+    ":hover": { "--chevron-hover": "1" },
+    ":focus-visible": { "--chevron-hover": "1" },
+  },
+  // chevron 旋转指示：折叠朝右、展开右转 90° 朝下；默认透明，随标题
+  // hover/聚焦渐显（opacity + transform 过渡同图标渐变曲线体系；未随
+  // 「减弱动态」降级——同前留痕策略）
+  chevron: {
+    opacity: "var(--chevron-hover, 0)",
+    transitionProperty: "transform, opacity",
+    transitionDuration: tokens.durationNormal,
+    transitionTimingFunction: tokens.curveDecelerateMid,
+  },
+  chevronExpanded: {
+    transform: "rotate(90deg)",
+  },
+  // 分区 body 折叠容器：grid rows 1fr→0fr 高度过渡 + 内层内容随
+  // --body-veil 渐隐/渐现（2026-09-03 用户指令加渐入渐出）；0fr 时内层
+  // overflow hidden + min-height 0 连同 sectionBody 内边距完全收干。
+  // 两向统一减速曲线（同日用户指令反馈原收起方向的加速曲线观感过急）；
+  // 时长 300ms = durationSlow（2026-09-03 用户指令按令牌；沿革
+  // durationNormal 200ms → 字面 200ms → durationSlow；注意本版令牌
+  // durationNormal 实为 200ms、durationSlow 实为 300ms，非文档常写的
+  // 150/250）
+  bodyCollapse: {
+    display: "grid",
+    gridTemplateRows: "1fr",
+    "--body-veil": "1",
+    transitionProperty: "grid-template-rows",
+    transitionDuration: tokens.durationSlow,
+    transitionTimingFunction: tokens.curveDecelerateMid,
+  },
+  bodyCollapsed: {
+    gridTemplateRows: "0fr",
+    "--body-veil": "0",
+    transitionTimingFunction: tokens.curveDecelerateMid,
+  },
+  bodyCollapseInner: {
+    overflow: "hidden",
+    minHeight: 0,
+    opacity: "var(--body-veil, 1)",
+    transitionProperty: "opacity",
+    transitionDuration: tokens.durationSlow,
+    transitionTimingFunction: tokens.curveDecelerateMid,
   },
 });
 
@@ -260,7 +366,11 @@ export function CapsulePanelCollapseButton({ onCollapse }: { onCollapse: () => v
       appearance="subtle"
       size="small"
       className={styles.collapseBtn}
-      icon={<ArrowMinimize24Regular />}
+      icon={
+        <span className={styles.collapseIcon}>
+          <ArrowMinimize16Regular />
+        </span>
+      }
       aria-label={t("common.collapsePanel")}
       onClick={onCollapse}
     />
@@ -271,7 +381,11 @@ export function CapsulePanelCollapseButton({ onCollapse }: { onCollapse: () => v
     「浮动胶囊面板」）。多分区面板由调用方逐分区包一层；首分区传
     separated={false} 不另画分隔线，并经 action 放置收起按钮
     （CapsulePanelCollapseButton）——2026-09-03 用户指令：小节标题与
-    内容最左元素对齐、收起控件并入首分区标题行右缘 */
+    内容最左元素对齐、收起控件并入首分区标题行右缘。同日追加：标题区
+    为 disclosure 按钮，点击折叠/展开本分区（chevron 旋转 + grid 高度
+    过渡，aria-expanded/aria-controls；折叠分区 ≠ 收起面板——右侧
+    action 独立不嵌套；状态分区本地默认展开、不持久化，UI 只读边界
+    不变） */
 export function CapsulePanelSection({
   title,
   children,
@@ -285,14 +399,32 @@ export function CapsulePanelSection({
   action?: ReactNode;
 }) {
   const styles = useStyles();
+  const bodyId = useId();
+  const [expanded, setExpanded] = useState(true);
   return (
     <section>
       {separated ? <Divider className={styles.sectionRule} /> : null}
       <div className={styles.sectionCaption}>
-        <Text size={300}>{title}</Text>
+        <button
+          type="button"
+          className={styles.captionToggleBtn}
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => setExpanded((v) => !v)}
+        >
+          <Text size={300}>{title}</Text>
+          <ChevronRight16Regular
+            aria-hidden="true"
+            className={mergeClasses(styles.chevron, expanded && styles.chevronExpanded)}
+          />
+        </button>
         {action ?? null}
       </div>
-      <div className={styles.sectionBody}>{children}</div>
+      <div id={bodyId} className={mergeClasses(styles.bodyCollapse, !expanded && styles.bodyCollapsed)}>
+        <div className={styles.bodyCollapseInner}>
+          <div className={styles.sectionBody}>{children}</div>
+        </div>
+      </div>
     </section>
   );
 }

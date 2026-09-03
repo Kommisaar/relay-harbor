@@ -27,9 +27,11 @@ const useStyles = makeStyles({
   mono: { fontFamily: tokens.fontFamilyMonospace },
   link: { color: tokens.colorBrandForeground1 },
   empty: { color: tokens.colorNeutralForeground3 },
-  // 内容内缩 8px：与小节标题同缘（分区 body 边距 L(16) + 本内缩 S(8)
-  // = 24px；2026-09-03 用户指令「板块标题和内容要对齐」）
-  inset: { paddingLeft: tokens.spacingHorizontalS },
+  // 内容内缩：左 8px 与小节标题同缘（分区 body 边距 L(16) + 本内缩 S(8)
+  // = 24px）；顶 8px 对齐修订时间线首行文字的视觉位置（首行为单选行，
+  // 行内 padding + label 几何使文字落在标题下 ~16px，分组标签原仅 ~8px
+  // 偏挤——2026-09-03 用户指令「其他两个模块的间距更近」）
+  inset: { paddingTop: tokens.spacingVerticalS, paddingLeft: tokens.spacingHorizontalS },
 });
 
 export function RelationsPanelSection({ projectId, relations }: RelationsPanelSectionProps) {

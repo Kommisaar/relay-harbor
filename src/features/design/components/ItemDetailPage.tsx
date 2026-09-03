@@ -14,7 +14,7 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
-import { ArrowExpand24Regular, ArrowLeft24Regular, List24Regular } from "@fluentui/react-icons";
+import { ArrowExpand16Regular, ArrowLeft24Regular, List16Regular } from "@fluentui/react-icons";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
@@ -84,8 +84,8 @@ export function ItemDetailPage() {
           历史版时显 rN、否则修订数；查看历史版时选中底色 */}
       <CapsulePanel
         label={t("common.detailPanel")}
-        icon={<List24Regular />}
-        expandIcon={<ArrowExpand24Regular />}
+        icon={<List16Regular />}
+        expandIcon={<ArrowExpand16Regular />}
         badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
         active={viewedRevision != null}
         open={panelOpen}
