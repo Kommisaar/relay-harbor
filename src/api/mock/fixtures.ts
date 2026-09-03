@@ -228,8 +228,8 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
     out.push({
       code: item.code,
       revisionNo: 1,
-      actor: "agent-session-1",
-      summary: "创建条目",
+      title: "创建条目",
+      summary: "",
       changedAt: item.createdAt,
       snapshot: snapshotOf(item, item.itemType === "TASK" ? "todo" : "draft"),
     });
@@ -237,8 +237,8 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
       out.push({
         code: item.code,
         revisionNo: 2,
-        actor: "agent-session-2",
-        summary: `修订正文与元数据（${item.title}）`,
+        title: "修订正文与元数据",
+        summary: `内容微调（${item.title}）`,
         changedAt: item.updatedAt + 3_600_000,
         snapshot: snapshotOf(item, item.itemType === "TASK" ? "doing" : "in_review"),
       });
@@ -247,8 +247,8 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
       out.push({
         code: item.code,
         revisionNo: 3,
-        actor: "agent-session-3",
-        summary: item.status === "in_review" || item.status === "draft" ? "补充验收依据" : "确认定稿",
+        title: item.status === "in_review" || item.status === "draft" ? "补充验收依据" : "确认定稿",
+        summary: "",
         changedAt: item.updatedAt,
         snapshot: snapshotOf(item),
       });
@@ -259,12 +259,12 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
 
 function overviewRevision(
   no: number,
-  actor: string,
+  title: string,
   summary: string,
   changedAt: number,
   doc: ProjectOverviewDoc,
 ): OverviewRevision {
-  return { revisionNo: no, actor, summary, changedAt, snapshot: { title: doc.title, bodyMd: doc.bodyMd } };
+  return { revisionNo: no, title, summary, changedAt, snapshot: { title: doc.title, bodyMd: doc.bodyMd } };
 }
 
 const relayProject: MockProject = (() => {
@@ -377,14 +377,13 @@ const relayProject: MockProject = (() => {
     title: "RelayHarbor 项目概览",
     bodyMd: r3Body,
     revisionNo: 3,
-    actor: "agent-session-3",
-    summary: "同步 00 基线：方向标注设计编号，补成功标准与主要风险",
+    summary: "方向标注设计编号，补成功标准与主要风险",
     changedAt: hoursAgo(30),
   };
   const overviewRevisions: OverviewRevision[] = [
-    overviewRevision(3, "agent-session-3", overview.summary, overview.changedAt, { ...overview, bodyMd: r3Body }),
-    overviewRevision(2, "agent-session-2", "补充方向与里程碑范围", daysAgo(5), { ...overview, bodyMd: r2Body }),
-    overviewRevision(1, "agent-session-1", "创建项目概览：定位与重点问题", daysAgo(12), { ...overview, bodyMd: r1Body }),
+    overviewRevision(3, "同步 00 基线", overview.summary, overview.changedAt, { ...overview, bodyMd: r3Body }),
+    overviewRevision(2, "补充方向与里程碑范围", "", daysAgo(5), { ...overview, bodyMd: r2Body }),
+    overviewRevision(1, "创建项目概览", "定位与重点问题", daysAgo(12), { ...overview, bodyMd: r1Body }),
   ];
   return { summary, items, relations: relayRelations, revisions: revisionsFor("p-relay", items), overview, overviewRevisions };
 })();
@@ -450,13 +449,12 @@ const zhsppyProject: MockProject = (() => {
     title: "zhsppy 提取端项目概览",
     bodyMd: zr2Body,
     revisionNo: 2,
-    actor: "agent-session-2",
-    summary: "补方向、范围、成功标准与风险",
+    summary: "明确成功标准与主要风险",
     changedAt: daysAgo(2),
   };
   const overviewRevisions: OverviewRevision[] = [
-    overviewRevision(2, "agent-session-2", overview.summary, overview.changedAt, { ...overview, bodyMd: zr2Body }),
-    overviewRevision(1, "agent-session-1", "创建项目概览：定位与重点问题", daysAgo(9), { ...overview, bodyMd: zr1Body }),
+    overviewRevision(2, "补方向、范围与成功标准", overview.summary, overview.changedAt, { ...overview, bodyMd: zr2Body }),
+    overviewRevision(1, "创建项目概览", "定位与重点问题", daysAgo(9), { ...overview, bodyMd: zr1Body }),
   ];
   return {
     summary: {

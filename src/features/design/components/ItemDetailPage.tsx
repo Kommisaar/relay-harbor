@@ -1,32 +1,30 @@
-// 条目详情页（UI-015～018，FR-009/010/013，UC-011/012/015）：独立全宽、单栏滚动
-// 修订历史浮动胶囊（sticky 右上）→ 头部 → 正文（Markdown 只读渲染）→ 关联 → 影响定位内嵌清单。
-import { useMemo, useState } from "react";
+// 条目详情页（UI-015～018，FR-009/010/013，UC-011/012/015）：独立全宽、单栏滚动。
+// 详情面板浮动胶囊（sticky 右上，单胶囊三分区：修订历史/关联/影响定位——
+// 2026-09-03 用户指令将关联、影响自正文迁入，正文收窄为 头部 + 正文）。
+import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
-  Divider,
+  Button,
   Link as FluentLink,
   MessageBar,
   MessageBarBody,
   MessageBarActions,
-  Button,
-  Text,
   Title2,
-  Title3,
   makeStyles,
-  mergeClasses,
   tokens,
 } from "@fluentui/react-components";
-import { ArrowLeft24Regular } from "@fluentui/react-icons";
+import { ArrowExpand24Regular, ArrowLeft24Regular, List24Regular } from "@fluentui/react-icons";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { MarkdownBody } from "../../../components/MarkdownBody";
+import { CapsulePanel, CapsulePanelCollapseButton, CapsulePanelSection } from "../../../components/CapsulePanel";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
-import type { ImpactEntry, ItemType, RelationEntry, RelationType } from "../../../api/types";
+import { RelationsPanelSection } from "./RelationsPanelSection";
+import { ImpactPanelSection } from "./ImpactPanelSection";
 import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
 
 const useStyles = makeStyles({
@@ -41,18 +39,7 @@ const useStyles = makeStyles({
     borderRadius: tokens.borderRadiusSmall,
     fontSize: tokens.fontSizeBase200,
   },
-  section: { marginTop: tokens.spacingVerticalXXL },
-  sectionTitle: { marginBottom: tokens.spacingVerticalS },
-  entryRow: {
-    display: "grid",
-    gridTemplateColumns: "auto 1fr auto",
-    columnGap: tokens.spacingHorizontalM,
-    alignItems: "baseline",
-    paddingBlock: tokens.spacingVerticalXXS,
-  },
-  mono: { fontFamily: tokens.fontFamilyMonospace },
   link: { color: tokens.colorBrandForeground1 },
-  empty: { color: tokens.colorNeutralForeground3 },
 });
 
 export function ItemDetailPage() {
@@ -68,26 +55,8 @@ export function ItemDetailPage() {
   const impact = useImpactQuery(projectId, code);
   /** null = 当前版本；数字 = 查看该历史版本快照（UI-017） */
   const [viewedRevision, setViewedRevision] = useState<number | null>(null);
-
-  const relationsByType = useMemo(() => {
-    const map = new Map<RelationType, RelationEntry[]>();
-    for (const entry of relations.data ?? []) {
-      const list = map.get(entry.relationType) ?? [];
-      list.push(entry);
-      map.set(entry.relationType, list);
-    }
-    return [...map.entries()];
-  }, [relations.data]);
-
-  const impactByType = useMemo(() => {
-    const map = new Map<ItemType, ImpactEntry[]>();
-    for (const entry of impact.data?.entries ?? []) {
-      const list = map.get(entry.item.itemType) ?? [];
-      list.push(entry);
-      map.set(entry.item.itemType, list);
-    }
-    return [...map.entries()];
-  }, [impact.data]);
+  // 详情面板开合（壳层 CapsulePanel 受控；点外/Esc/收起按钮均回 false）
+  const [panelOpen, setPanelOpen] = useState(false);
 
   if (detail.isPending) {
     return (
@@ -110,14 +79,39 @@ export function ItemDetailPage() {
 
   return (
     <article className={page}>
-      {/* 修订历史浮动胶囊（2026-09-02 用户指令改浮动胶囊）：sticky 右上、
-          不占文档流（FR-009/UI-017，无 diff；patterns.md「修订时间线」） */}
-      <RevisionTimeline
-        entries={revisions.data ?? []}
-        currentRevisionNo={item.currentRevision}
-        viewedRevisionNo={viewedRevision}
-        onSelect={setViewedRevision}
-      />
+      {/* 详情面板浮动胶囊（2026-09-03 用户指令由「修订历史」胶囊扩为三分区，
+          patterns.md「浮动胶囊面板」）：sticky 右上、不占文档流；徽标查看
+          历史版时显 rN、否则修订数；查看历史版时选中底色 */}
+      <CapsulePanel
+        label={t("common.detailPanel")}
+        icon={<List24Regular />}
+        expandIcon={<ArrowExpand24Regular />}
+        badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
+        active={viewedRevision != null}
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+      >
+        {/* 首分区 separated=false：上方即面板顶缘，不另画分隔线；
+            收起按钮居标题行右缘（2026-09-03 用户指令：面板无名称标题行） */}
+        <CapsulePanelSection
+          title={t("common.revisionHistory")}
+          separated={false}
+          action={<CapsulePanelCollapseButton onCollapse={() => setPanelOpen(false)} />}
+        >
+          <RevisionTimeline
+            entries={revisions.data ?? []}
+            currentRevisionNo={item.currentRevision}
+            viewedRevisionNo={viewedRevision}
+            onSelect={setViewedRevision}
+          />
+        </CapsulePanelSection>
+        <CapsulePanelSection title={t("itemDetail.relations")}>
+          <RelationsPanelSection projectId={projectId} relations={relations.data} />
+        </CapsulePanelSection>
+        <CapsulePanelSection title={t("itemDetail.impact")}>
+          <ImpactPanelSection projectId={projectId} impact={impact.data} />
+        </CapsulePanelSection>
+      </CapsulePanel>
 
       {/* 面包屑返回（UI-015）→ 所属类型页（2026-09-01 类型页拆分） */}
       <FluentLink
@@ -166,70 +160,6 @@ export function ItemDetailPage() {
 
       {/* 正文：Markdown 只读渲染（CON-009，无编辑形态；共享件 patterns.md） */}
       <MarkdownBody>{bodyMd}</MarkdownBody>
-
-      {/* 关联区：按关系类型分组、上下游、可跳转（FR-010/UI-016） */}
-      <section className={styles.section}>
-        <Divider>
-          <Title3>{t("itemDetail.relations")}</Title3>
-        </Divider>
-        {relationsByType.length === 0 ? (
-          <Text className={styles.empty}>{t("common.noRelations")}</Text>
-        ) : (
-          relationsByType.map(([relationType, entries]) => (
-            <div key={relationType}>
-              <Text weight="semibold" size={300}>
-                {t(`relation.${relationType}`)}
-              </Text>
-              {entries.map((entry) => (
-                <div key={`${entry.relationType}-${entry.direction}-${entry.peer.code}`} className={styles.entryRow}>
-                  <Badge appearance="ghost" size="small">
-                    {t(`itemDetail.direction${entry.direction === "out" ? "Out" : "In"}`)}
-                  </Badge>
-                  <span>
-                    <Link to={`/projects/${projectId}/items/${entry.peer.code}`} className={mergeClasses(styles.mono, styles.link)}>
-                      {entry.peer.code}
-                    </Link>{" "}
-                    <Text size={300}>{entry.peer.title}</Text>
-                  </span>
-                  <StatusBadge status={entry.peer.status} />
-                </div>
-              ))}
-            </div>
-          ))
-        )}
-      </section>
-
-      {/* 影响定位：内嵌清单，按类型分组、逐项可跳转（FR-013/UI-018） */}
-      <section className={styles.section}>
-        <Divider>
-          <Title3>{t("itemDetail.impact")}</Title3>
-        </Divider>
-        {impactByType.length === 0 ? (
-          <Text className={styles.empty}>{t("common.noImpact")}</Text>
-        ) : (
-          impactByType.map(([type, entries]) => (
-            <div key={type}>
-              <Text weight="semibold" size={300}>
-                {type} · {t(`type.${type}`)}
-              </Text>
-              {entries.map((entry) => (
-                <div key={entry.item.code} className={styles.entryRow}>
-                  <Badge appearance="ghost" size="small">
-                    {t("itemDetail.affectedDepth", { depth: entry.depth })}
-                  </Badge>
-                  <span>
-                    <Link to={`/projects/${projectId}/items/${entry.item.code}`} className={mergeClasses(styles.mono, styles.link)}>
-                      {entry.item.code}
-                    </Link>{" "}
-                    <Text size={300}>{entry.item.title}</Text>
-                  </span>
-                  <StatusBadge status={entry.item.status} />
-                </div>
-              ))}
-            </div>
-          ))
-        )}
-      </section>
     </article>
   );
 }

@@ -10,8 +10,9 @@
   → 返回变更摘要（code、new_revision、status、kinds）；
 - 读路径：项目/条目/关系/看板/搜索/影响闭包查询（供 ipc 与 http 共用）；
 - 导出编排：取数 → domain/snapshot 格式化 → 交 infra 写盘；
-- CallContext：每操作携带（actor 标识、入口来源），落修订 actor 字段
-  （远程演进的签名保险，ADR-008）。
+- CallContext：每操作携带（actor 标识、入口来源），入结构化操作日志
+  （NFR-007；远程演进的签名保险，ADR-008）——修订记录不含 actor
+  （2026-09-03 用户指令），变更者审计由日志承载。
 
 ## 不负责
 

@@ -36,7 +36,7 @@ erDiagram
     revisions {
         uuid item_id FK
         int revision_no
-        text actor "本地用户或 Agent 会话标识"
+        text title "修订标题（2026-09-03 用户指令新增，替代 actor）"
         text summary "含状态迁移记录"
         json content_snapshot "标题/正文/元数据/状态"
         datetime changed_at
@@ -62,7 +62,7 @@ erDiagram
     project_overview_revisions {
         uuid project_id PK "与 revision_no 联合主键"
         int revision_no PK
-        text actor "本地用户或 Agent 会话标识"
+        text title "修订标题（2026-09-03 用户指令新增，替代 actor）"
         text summary
         json content_snapshot "标题/正文"
         datetime changed_at
@@ -107,8 +107,10 @@ project_overview / project_overview_revisions 为项目概览文档
   cancelled/superseded/deprecated；TASK：todo/doing/await_review/done/cancelled）；
 - `items.current_revision`：乐观并发凭据（BR-005）；每次提交 +1；
 - `revisions`：不可变追加表——无 UPDATE/DELETE 权限（迁移与测试断言），
-  含 actor（BR-004 的审计承载）、content_snapshot（完整内容快照，历史
-  版本查看即读此列）、summary（含 `status: draft→in_review` 类迁移记录）；
+  含 title（修订标题，2026-09-03 用户指令新增）、content_snapshot（完整
+  内容快照，历史版本查看即读此列）、summary（含 `status: draft→in_review`
+  类迁移记录）；操作者不入修订记录——原 actor 列同日用户指令移除，
+  变更者审计由结构化操作日志承载（NFR-007，services.md CallContext）；
 - 时间戳统一 UTC 存储（`changed_at`、`created_at`、`updated_at`）。
 
 ## 索引与规模假设

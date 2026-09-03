@@ -295,7 +295,7 @@ export function StatsPage() {
               <Text size={300}>{r.title}</Text>
               <span className={styles.revisionMeta}>
                 {" "}
-                r{r.revisionNo} · {r.actor} · {r.summary}
+                r{r.revisionNo} · {r.summary}
               </span>
             </span>
             <span className={styles.revisionMeta}>

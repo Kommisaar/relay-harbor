@@ -255,7 +255,6 @@ export async function listRecentRevisions(projectId: string, limit = 10): Promis
         code: r.code,
         title: item?.title ?? r.code,
         revisionNo: r.revisionNo,
-        actor: r.actor,
         summary: r.summary,
         changedAt: r.changedAt,
       };

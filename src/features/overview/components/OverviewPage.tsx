@@ -16,10 +16,12 @@ import {
   makeStyles,
   tokens,
 } from "@fluentui/react-components";
+import { ArrowExpand24Regular, History24Regular } from "@fluentui/react-icons";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { MarkdownBody } from "../../../components/MarkdownBody";
+import { CapsulePanel, CapsulePanelCollapseButton, CapsulePanelSection } from "../../../components/CapsulePanel";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { useProjectOverviewQuery, useProjectOverviewRevisionsQuery } from "../queries";
@@ -47,6 +49,8 @@ export function OverviewPage() {
   const revisions = useProjectOverviewRevisionsQuery(projectId);
   /** null = 当前版本；数字 = 查看该历史版本快照（UI-017 同款，本地 state 不入 URL） */
   const [viewedRevision, setViewedRevision] = useState<number | null>(null);
+  // 修订面板开合（壳层 CapsulePanel 受控；单分区面板，label 沿用「修订历史」）
+  const [panelOpen, setPanelOpen] = useState(false);
 
   if (doc.isPending) {
     return (
@@ -69,23 +73,43 @@ export function OverviewPage() {
 
   return (
     <article className={page}>
-      {/* 修订历史浮动胶囊（2026-09-02 用户指令）：sticky 右上、不占文档流
-          （BR-004 不可变追加，无 diff；patterns.md「修订时间线」） */}
-      <RevisionTimeline
-        entries={revisions.data ?? []}
-        currentRevisionNo={data.revisionNo}
-        viewedRevisionNo={viewedRevision}
-        onSelect={setViewedRevision}
-      />
+      {/* 修订历史浮动胶囊（2026-09-02 用户指令；2026-09-03 壳层上收共享
+          CapsulePanel，概览为单分区面板）：sticky 右上、不占文档流
+          （BR-004 不可变追加，无 diff；patterns.md「浮动胶囊面板」） */}
+      <CapsulePanel
+        label={t("common.revisionHistory")}
+        icon={<History24Regular />}
+        expandIcon={<ArrowExpand24Regular />}
+        badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
+        active={viewedRevision != null}
+        open={panelOpen}
+        onOpenChange={setPanelOpen}
+      >
+        {/* 单分区（2026-09-03 用户指令：统一条目详情面板样式——首分区
+            小节标题行 + 行内收起按钮；separated=false，上方即面板顶缘） */}
+        <CapsulePanelSection
+          title={t("common.revisionHistory")}
+          separated={false}
+          action={<CapsulePanelCollapseButton onCollapse={() => setPanelOpen(false)} />}
+        >
+          <RevisionTimeline
+            entries={revisions.data ?? []}
+            currentRevisionNo={data.revisionNo}
+            viewedRevisionNo={viewedRevision}
+            onSelect={setViewedRevision}
+          />
+        </CapsulePanelSection>
+      </CapsulePanel>
 
-      {/* 头部：文档标题 + rN·操作者·相对时间（形态对齐条目详情 UI-016） */}
+      {/* 头部：文档标题 + rN·相对时间（形态对齐条目详情 UI-016；actor 元信息
+          2026-09-03 用户指令随修订模型移除） */}
       <header className={styles.header}>
         <div className={styles.titleRow}>
           <Title2>{data.title}</Title2>
         </div>
         <div className={styles.metaRow}>
           <span>
-            r{data.revisionNo} · {data.actor} · <RelativeTime timestamp={data.changedAt} />
+            r{data.revisionNo} · <RelativeTime timestamp={data.changedAt} />
           </span>
         </div>
       </header>

@@ -121,3 +121,14 @@ body {
     animation-delay: var(--enter-delay, 0ms);
   }
 }
+
+/* 修订历史时间线行（2026-09-03，patterns.md「修订时间线」）：Fluent Radio
+   的 label 默认 flex-grow 0（shrink-to-fit），行内容网格撑不满行宽，
+   时间列右对齐随之失效——Fluent 内部元素、Griffel 无后代选择器，与
+   .md-body 同款全局刻意例外，作用域以组件根上的 .rev-timeline-radio
+   钩子类限定。indicator 的默认 margin-top:8px 无需覆盖：label 净偏移
+   （padding 8 + margin -2）下其圆心恰与 20px 标题首行中心线重合 */
+.rev-timeline-radio > .fui-Radio__label {
+  flex-grow: 1;
+}
+

@@ -1,24 +1,20 @@
-// 修订时间线共享组件（patterns.md「修订时间线」；2026-09-02 自条目详情
-// UI-017 抽出，同日用户指令由文末内联区块改版为右上角浮动胶囊——原型
-// 参照 ZCode「更改」胶囊，内部排版不照搬、以交互逻辑为准）：
-// 收起态胶囊 sticky 悬于文档容器顶部右侧（height-0 wrapper 不占文档流，
-// 消费方作为 article 首子元素挂载），与页顶保持设定的最小距离、滚动时
-// 钉在固定高度不随内容移动（2026-09-02 用户三次指令：top 由 8px 加大至
-// XXL 32）；点击开合展开面板（absolute 悬于胶囊下方，行布局沿用原
-// 网格）；点外/Esc 关闭、选中修订后收起。版本切换状态由页面持有
-// （viewedRevision 本地 state，null=当前，刷新回当前），组件只做开合
-// 与回调。自绘点外关闭：Fluent Popover 锚定与滚动行为不合需求（留痕），
-// 不为此引依赖。
-import { useEffect, useRef, useState } from "react";
-import { Button, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
-import { ArrowExpand24Regular, ArrowMinimize24Regular, History24Regular } from "@fluentui/react-icons";
+// 修订时间线内容组件（patterns.md「浮动胶囊面板」的修订历史分区）。
+// 2026-09-02 自条目详情 UI-017 抽为共享组件、同日用户指令改右上角浮动
+// 胶囊；2026-09-03 壳层（sticky 悬浮/胶囊按钮/同位变形面板/点外 Esc
+// 关闭）上收共享 CapsulePanel，本组件只保留 RadioGroup 版本清单内容，
+// 由消费方（条目详情/项目概览）包入 CapsulePanel 使用。
+// 原生单选圆点表达查看中版本（选中=品牌色），方向键在版本间移动
+// （roving tabindex）；选中不自动收起。版本切换状态由页面持有
+// （viewedRevision 本地 state，null=当前，刷新回当前），组件只做回调。
+import { Radio, RadioGroup, Text, makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 import { useTranslation } from "react-i18next";
 import { RelativeTime } from "./RelativeTime";
 
-/** 时间线条目最小形态（Revision / OverviewRevision 结构均满足） */
+/** 时间线条目最小形态（Revision / OverviewRevision 结构均满足）。
+    title 为修订标题（2026-09-03 用户指令替代 actor，操作者审计在操作日志） */
 export interface RevisionTimelineEntry {
   revisionNo: number;
-  actor: string;
+  title: string;
   summary: string;
   changedAt: number;
 }
@@ -32,230 +28,130 @@ interface RevisionTimelineProps {
   onSelect: (revisionNo: number | null) => void;
 }
 
+/** 全局样式钩子（styles.css「修订历史时间线行」）：label flex-grow 补丁
+    的作用域限定类 */
+const RADIO_HOOK_CLASS = "rev-timeline-radio";
+
 const useStyles = makeStyles({
-  // 浮动位：height-0 sticky 悬浮，胶囊与页顶保持**最小距离**（top XXL 32，
-  // 2026-09-02 用户三次指令纠正语义：既非初版 8px 贴顶、也非锚定文档
-  // 随页滚离——滚动时胶囊恒不低于此线，视觉上钉在固定高度）
-  floatWrap: {
-    position: "sticky",
-    top: tokens.spacingVerticalXXL,
-    zIndex: 10,
-    height: "0",
-    display: "flex",
-    justifyContent: "flex-end",
-  },
-  // 面板的定位参照（面板 absolute 悬于胶囊下方）
-  anchor: { position: "relative" },
-  capsule: {
-    borderRadius: tokens.borderRadiusCircular,
-    backgroundColor: tokens.colorNeutralBackground1,
-    // medium Button 默认水平内边距 M(12) 偏紧，胶囊放宽到 L；高度由
-    // minHeight 撑出（2026-09-02 用户指令加高 32→40，令牌外值留痕）
-    minHeight: "40px",
-    padding: `0 ${tokens.spacingHorizontalL}`,
-    boxShadow: tokens.shadow8,
-    // outline Button 自带边框，选中查看历史版时提底色提示不在当前版；
-    // hover 置 --icon-hover 驱动图标交叉渐变（iconHistory/iconExpand 层
-    // 经 calc(var) 派生透明度与旋转，避免 Griffel 后代选择器限制）
-    ":hover": {
-      backgroundColor: tokens.colorNeutralBackground1Hover,
-      "--icon-hover": "1",
-    },
-  },
-  capsuleViewing: {
-    backgroundColor: tokens.colorNeutralBackground1Selected,
-    ":hover": { backgroundColor: tokens.colorNeutralBackground1Selected },
-  },
-  // 计数徽标：查看历史版时展示版本号 rN
-  count: {
-    minWidth: "20px",
-    padding: `0 ${tokens.spacingHorizontalXS}`,
-    borderRadius: tokens.borderRadiusCircular,
-    backgroundColor: tokens.colorNeutralBackground2,
-    color: tokens.colorNeutralForeground2,
-    fontSize: tokens.fontSizeBase200,
-    lineHeight: "16px",
-    textAlign: "center",
-    marginLeft: tokens.spacingHorizontalXXS,
-  },
-  // 图标交叉渐变（2026-09-02 用户指令）：双层图标叠放，hover 经
-  // --icon-hover 门控——历史图标淡出旋出、展开图标旋入淡入，200ms
-  // 减速曲线；transform 派生值走 calc(var)，过渡落在 opacity/transform
-  // 上。未随「减弱动态」降级（动效轻量，同活动图 canvas 动画留痕策略）
-  iconSwap: {
+  // 行外壳：轨道的锚定与承载层（2026-09-03 断线二修）。轨道挂在
+  // wrapper 上而非 Radio 内——Radio 会把越出自身边界的子元素裁掉，
+  // 轨道延伸段在行交界处不可见即断线；wrapper 透明无边框不裁剪。
+  // alignSelf stretch：RadioGroup 纵向 flex 不拉伸子项，行会按内容
+  // 收缩、内部网格无从撑满行宽（时间右对齐失效）。上下对称 padding
+  // 4px 放大条目间距（2026-09-03 用户指令）——对称 padding 不改变
+  // 「行高 50% = 圆点圆心」的轨道锚点
+  rowWrap: {
     position: "relative",
-    width: "24px",
-    height: "24px",
-    display: "inline-flex",
+    alignSelf: "stretch",
+    // 水平 margin 0 S 已移除（2026-09-03 用户指令「板块标题和内容要
+    // 对齐」）：圆点左缘随分区内容边距（16 + indicator 自带 8）落在
+    // 小节标题同缘 24px；轨道相对几何不变（随行整体平移）
+    padding: "4px 0",
   },
-  iconLayer: {
-    position: "absolute",
-    top: "0",
-    left: "0",
-    right: "0",
-    bottom: "0",
-    display: "inline-flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transitionProperty: "opacity, transform",
-    transitionDuration: tokens.durationNormal,
-    transitionTimingFunction: tokens.curveDecelerateMid,
+  // Radio 行（2026-09-03 用户指令改 RadioGroup 形态）：原生单选圆点
+  // 表达查看中状态（替代三态彩点），方向键可在版本间移动。root
+  // alignItems flex-start（2026-09-03 用户指令：圆点与**标题首行**
+  // 对齐，不再行内垂直居中——多行条目里居中圆点会悬在两行之间）。
+  // indicator 默认 margin-top 8px 恰使圆心落在 label 净偏移（padding
+  // 8 + margin -2）下的 20px 标题首行中心线上，无需覆盖
+  radio: {
+    width: "100%",
+    paddingLeft: "0",
+    paddingRight: "0",
+    alignItems: "flex-start",
   },
-  iconHistory: {
-    opacity: "calc(1 - var(--icon-hover, 0))",
-    transform: "rotate(calc((1 - var(--icon-hover, 0)) * 90deg)) scale(calc(1 - 0.4 * var(--icon-hover, 0)))",
+  // Radio label 内容网格：修订号 + 两行主列 + 相对时间（2026-09-03
+  // 用户指令改两行结构：标题第一行、摘要第二行弱化，不再「·」内联；
+  // 时间顶线右对齐统一）；行文字常规字重 400（覆盖 Fluent 默认
+  // SemiBold，与胶囊/面板标题统一）
+  rowContent: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr auto",
+    columnGap: tokens.spacingHorizontalM,
+    alignItems: "start",
+    width: "100%",
+    paddingRight: tokens.spacingHorizontalM,
+    textAlign: "left",
+    fontWeight: tokens.fontWeightRegular,
   },
-  iconExpand: {
-    opacity: "var(--icon-hover, 0)",
-    transform: "rotate(calc((var(--icon-hover, 0) - 1) * 90deg)) scale(calc(0.6 + 0.4 * var(--icon-hover, 0)))",
-  },
-  panel: {
-    position: "absolute",
-    top: "calc(100% + 6px)",
-    right: "0",
-    zIndex: 11,
-    minWidth: "440px",
-    maxWidth: "560px",
+  // 主列：标题/摘要纵向排列；minWidth 0 允许长摘要换行收缩
+  rowMain: {
     display: "flex",
     flexDirection: "column",
     gap: "2px",
-    padding: `0 0 ${tokens.spacingVerticalM}`,
-    backgroundColor: tokens.colorNeutralBackground1,
-    border: `1px solid ${tokens.colorNeutralStroke1}`,
-    // 圆角 12px：对齐样例「Git 工具」面板的疏朗大圆角（Fluent 令牌最大
-    // XLarge 8px 不够，令牌外值留痕）
-    borderRadius: "12px",
-    boxShadow: tokens.shadow8,
-    overflow: "hidden",
+    minWidth: "0",
   },
-  // 面板 header（2026-09-02 用户指令，样例 ZCode「Git 工具」面板）：
-  // 标题居左 + 缩小按钮居右，下缘 hairline 与行清单分隔；样例比例
-  // 疏朗——标题 base400(16px)、按钮 32px 命中区、左右留白加足
-  panelHeader: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: tokens.spacingHorizontalM,
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalS} ${tokens.spacingVerticalS} ${tokens.spacingHorizontalXL}`,
-    borderBottom: `1px solid ${tokens.colorNeutralStroke2}`,
-    marginBottom: tokens.spacingVerticalXXS,
+  // 时间列右缘对齐（auto 列宽取最宽时间，窄时间默认左缘对齐会参差）；
+  // 20px 行盒与标题首行同高，首行中心线三格重合
+  rowTime: { justifySelf: "end", lineHeight: "20px" },
+  // 竖向轨道：stroke2 2px，对准 Radio 原生圆点圆心。圆心为常量距行顶
+  // 20px（wrapper padding 4 + indicator margin 8 + 半径 8，与标题首行
+  // 20px 行盒中心线重合——2026-09-03 用户指令圆点对齐标题行）。轨段
+  // 止于圆点上下切点（上切点 y=12、下切点 y=28）、不穿孔——空心圆点
+  // 内芯透明，轨线穿孔即从内芯露出；railDown 止于下行上切点高度上方
+  // （+8 < +12），与下行 railUp 重叠衔接且不压圆环
+  rail: {
+    position: "absolute",
+    zIndex: 1,
+    left: "15px",
+    width: "2px",
+    backgroundColor: tokens.colorNeutralStroke2,
   },
-  panelTitle: {
-    fontSize: tokens.fontSizeBase400,
-    fontWeight: tokens.fontWeightSemibold,
-  },
-  collapseBtn: { minWidth: "32px", minHeight: "32px" },
-  row: {
-    // 行高亮内缩：左右 margin 8 + 圆角，选中底色不再通栏顶到面板边缘
-    //（对齐样例/Fluent MenuList 的行形态）；行距加足呼吸感
-    margin: `0 ${tokens.spacingHorizontalS}`,
-    display: "grid",
-    // 修订号列自适应（「rN · 当前」不折行；面板窄于原内联区块，定宽 56px 会折）
-    gridTemplateColumns: "auto 1fr auto",
-    columnGap: tokens.spacingHorizontalM,
-    alignItems: "baseline",
-    padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}`,
-    textAlign: "left",
-    borderRadius: tokens.borderRadiusMedium,
-  },
-  active: { backgroundColor: tokens.colorNeutralBackground1Selected },
-  mono: { fontFamily: tokens.fontFamilyMonospace },
+  railDown: { top: "28px", height: "calc(100% - 20px)" },
+  // 上段：自行上方 8px 延伸至圆点上切点（-8 + 20 = 12）
+  railUp: { top: "-8px", height: "20px" },
+  // 修订号与时间钉在 20px 首行行盒（与标题行盒同高，首行中心线三格
+  // 重合、并与圆点圆心 y=20 对齐）
+  mono: { fontFamily: tokens.fontFamilyMonospace, lineHeight: "20px" },
   muted: { color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase200 },
 });
 
 export function RevisionTimeline({ entries, currentRevisionNo, viewedRevisionNo, onSelect }: RevisionTimelineProps) {
   const styles = useStyles();
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const anchorRef = useRef<HTMLDivElement>(null);
-
-  // 展开期间监听点外关闭与 Esc（collapse on select 于行回调内处理）
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (anchorRef.current && !anchorRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
-
-  const viewingHistory = viewedRevisionNo != null;
 
   return (
-    <div className={styles.floatWrap}>
-      <div ref={anchorRef} className={styles.anchor}>
-        <Button
-          appearance="outline"
-          className={mergeClasses(styles.capsule, viewingHistory && styles.capsuleViewing)}
-          icon={
-            <span className={styles.iconSwap} aria-hidden="true">
-              <span className={mergeClasses(styles.iconLayer, styles.iconHistory)}>
-                <History24Regular />
-              </span>
-              <span className={mergeClasses(styles.iconLayer, styles.iconExpand)}>
-                <ArrowExpand24Regular />
-              </span>
-            </span>
-          }
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}
-        >
-          {t("common.revisionHistory")}
-          <span className={styles.count}>
-            {viewingHistory ? `r${viewedRevisionNo}` : entries.length}
-          </span>
-        </Button>
-        {open ? (
-          <div className={styles.panel} aria-label={t("common.revisionHistory")}>
-            <div className={styles.panelHeader}>
-              <span className={styles.panelTitle}>{t("common.revisionHistory")}</span>
-              <Button
-                appearance="subtle"
-                size="small"
-                className={styles.collapseBtn}
-                icon={<ArrowMinimize24Regular />}
-                aria-label={t("common.collapsePanel")}
-                onClick={() => setOpen(false)}
-              />
-            </div>
-            {entries.map((revision) => {
-              const isCurrent = revision.revisionNo === currentRevisionNo;
-              const isViewing = viewedRevisionNo === revision.revisionNo || (viewedRevisionNo == null && isCurrent);
-              return (
-                <Button
-                  key={revision.revisionNo}
-                  appearance="subtle"
-                  className={mergeClasses(styles.row, isViewing && styles.active)}
-                  onClick={() => {
-                    onSelect(isCurrent ? null : revision.revisionNo);
-                    // 选中即收起：正文换装与提示条反馈已足够，面板不遮挡阅读
-                    setOpen(false);
-                  }}
-                >
-                  <span className={styles.mono}>
-                    r{revision.revisionNo}
-                    {isCurrent ? ` · ${t("common.current")}` : ""}
+    // RadioGroup 形态（2026-09-03 用户指令）：原生单选圆点表达查看中
+    // 状态，方向键在版本间移动；选中不自动收起，便于连续浏览版本
+    // （点外/Esc/收起按钮照常关闭）。value 以当前查看版为受控值，
+    // 选当前版回传 null
+    <RadioGroup
+      value={String(viewedRevisionNo ?? currentRevisionNo)}
+      onChange={(_, data) => {
+        const v = Number(data.value);
+        onSelect(v === currentRevisionNo ? null : v);
+      }}
+      aria-label={t("common.revisionHistory")}
+    >
+      {entries.map((revision, index) => {
+        // 轨道挂 wrapper 层（Radio 会裁剪越界子元素）；非首行有上段、
+        // 非末行有下段，段止于圆点切点、行交界 ±8px 重叠衔接；单行
+        // 条目无轨道
+        const showUp = entries.length > 1 && index > 0;
+        const showDown = entries.length > 1 && index < entries.length - 1;
+        return (
+          <div key={revision.revisionNo} className={styles.rowWrap}>
+            {showUp ? <span className={mergeClasses(styles.rail, styles.railUp)} aria-hidden="true" /> : null}
+            {showDown ? <span className={mergeClasses(styles.rail, styles.railDown)} aria-hidden="true" /> : null}
+            <Radio
+              value={String(revision.revisionNo)}
+              className={mergeClasses(styles.radio, RADIO_HOOK_CLASS)}
+              label={
+                <span className={styles.rowContent}>
+                  <span className={styles.mono}>r{revision.revisionNo}</span>
+                  <span className={styles.rowMain}>
+                    <Text size={300}>{revision.title}</Text>
+                    {revision.summary ? <span className={styles.muted}>{revision.summary}</span> : null}
                   </span>
-                  <span>
-                    <Text size={300}>{revision.summary}</Text>
-                    <span className={styles.muted}> · {revision.actor}</span>
-                  </span>
-                  <span className={styles.muted}>
+                  <span className={mergeClasses(styles.muted, styles.rowTime)}>
                     <RelativeTime timestamp={revision.changedAt} />
                   </span>
-                </Button>
-              );
-            })}
+                </span>
+              }
+            />
           </div>
-        ) : null}
-      </div>
-    </div>
+        );
+      })}
+    </RadioGroup>
   );
 }

@@ -10,7 +10,8 @@
 - 连接管理：单写连接池（写操作）+ 只读池（查询），WAL、
   busy_timeout=5000、foreign_keys=ON；
 - 迁移执行（`src-tauri/migrations/`，启动时，版本检查防降级）；
-- 单事务内完成：OCC 校验 → 变更落库 → 编号分配 → 修订追加（含 actor）；
+- 单事务内完成：OCC 校验 → 变更落库 → 编号分配 → 修订追加（含 title，
+  2026-09-03 用户指令以修订标题替代 actor）；
 - 备份原语：`VACUUM INTO`（NFR-004）。
 
 ## 不负责

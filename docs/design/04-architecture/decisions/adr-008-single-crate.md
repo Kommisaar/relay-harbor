@@ -21,7 +21,8 @@ Remote Server（`rh-server`）与桌面应用同为宿主，PostgreSQL 存储
 
 M1 单 crate。四层以模块边界存在，纪律保住可移植性：domain/services
 不依赖框架（ADR-001）；service 操作签名即 API 契约，从第一天带
-CallContext/actor；审计记录带 actor 字段（BR-004 已落实）。Remote
+CallContext/actor；审计记录带 actor 字段（BR-004 已落实；2026-09-03
+用户指令修订记录移除 actor、actor 保留于 CallContext 与操作日志）。Remote
 Server 立项时执行既定抽取路径（rh-core / rh-server / rh-storage-pg），
 mcp-bridge 因需随 Plugin 独立分发，自始就是独立构建单元（不受本决策
 影响）。

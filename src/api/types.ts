@@ -75,8 +75,8 @@ export interface RevisionSnapshot {
 export interface Revision {
   code: string;
   revisionNo: number;
-  /** 本地用户或 Agent 会话标识 */
-  actor: string;
+  /** 修订标题（变更主题；2026-09-03 用户指令替代 actor，操作者审计在操作日志） */
+  title: string;
   summary: string;
   changedAt: number;
   snapshot: RevisionSnapshot;
@@ -122,12 +122,12 @@ export interface ProjectState {
   revisionsByDay: DayCount[];
 }
 
-/** 概览页最近修订（list_recent_revisions，FR-018/UI-011） */
+/** 概览页最近修订（list_recent_revisions，FR-018/UI-011）。title 为
+    条目标题（区别于修订自身的 summary） */
 export interface RecentRevision {
   code: string;
   title: string;
   revisionNo: number;
-  actor: string;
   summary: string;
   changedAt: number;
 }
@@ -140,8 +140,6 @@ export interface ProjectOverviewDoc {
   title: string;
   bodyMd: string;
   revisionNo: number;
-  /** 本地用户或 Agent 会话标识 */
-  actor: string;
   summary: string;
   changedAt: number;
 }
@@ -151,7 +149,8 @@ export interface ProjectOverviewDoc {
     一次取齐策略）；概览非条目——无类型/状态/元数据字段 */
 export interface OverviewRevision {
   revisionNo: number;
-  actor: string;
+  /** 修订标题（2026-09-03 用户指令替代 actor） */
+  title: string;
   summary: string;
   changedAt: number;
   snapshot: {
