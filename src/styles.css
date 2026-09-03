@@ -132,3 +132,55 @@ body {
   flex-grow: 1;
 }
 
+/* 修订对比（2026-09-03，patterns.md「修订对比」）：diff 增删标记走全局
+   作用域类 .md-diff-body（.md-body 同款刻意例外——data-diff 属性由合并
+   MDAST 的 data.hProperties 透出，Griffel 无后代选择器）。配色取
+   FluentProvider 主题 CSS 变量，明暗自跟随；行首 +/- 标记使增删不依赖
+   颜色单通道；删除块内链接去活化（旧内容不可交互） */
+.md-diff-body [data-diff="removed"],
+.md-diff-body [data-diff="added"] {
+  position: relative;
+  border-left: 3px solid;
+  border-radius: var(--borderRadiusSmall);
+  padding-left: 1.6em;
+}
+.md-diff-body [data-diff="removed"] {
+  background: var(--colorPaletteRedBackground2);
+  border-color: var(--colorPaletteRedForeground2);
+}
+.md-diff-body [data-diff="added"] {
+  background: var(--colorPaletteGreenBackground2);
+  border-color: var(--colorPaletteGreenForeground2);
+}
+.md-diff-body [data-diff="removed"]::before,
+.md-diff-body [data-diff="added"]::before {
+  position: absolute;
+  left: 0.5em;
+  font-family: var(--fontFamilyMonospace);
+  font-weight: 600;
+}
+.md-diff-body [data-diff="removed"]::before {
+  content: "-";
+}
+.md-diff-body [data-diff="added"]::before {
+  content: "+";
+}
+.md-diff-body [data-diff="removed"] a {
+  pointer-events: none;
+  color: inherit;
+  text-decoration: none;
+  cursor: default;
+}
+/* 代码行：块级 span 逐行铺排（保持 pre 横向滚动），行标记同色系 */
+.md-diff-body pre .md-diff-line {
+  display: block;
+}
+.md-diff-body pre [data-diff="removed"],
+.md-diff-body pre [data-diff="added"] {
+  padding-left: 1.4em;
+}
+.md-diff-body pre [data-diff="removed"]::before,
+.md-diff-body pre [data-diff="added"]::before {
+  left: 0.15em;
+}
+

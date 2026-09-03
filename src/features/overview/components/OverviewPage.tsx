@@ -1,10 +1,12 @@
 // 项目概览页（UI-035，2026-09-02 用户指令新增，同日改版 article 文档形态）：
 // 每项目一篇可维护文档——头部（标题 + rN·操作者·相对时间）+ Markdown 正文
 // + 修订时间线版本切换（UI-017 同款共享件）；进入项目默认落地页。
+// 历史版正文自动显示与紧邻上一版的单栏 diff（2026-09-03 用户指令，
+// patterns.md「修订对比」；最旧版无上一版显示纯快照）。
 // 数据 get_project_overview / list_project_overview_revisions（INT-001
 // 白名单 15→16），Agent 经 MCP 维护，UI 只读渲染；文档内容不参与 i18n
 // （与条目正文同策略）。
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -21,6 +23,7 @@ import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
 import { MarkdownBody } from "../../../components/MarkdownBody";
+import { MarkdownDiffBody } from "../../../components/markdown-diff/MarkdownDiffBody";
 import { CapsulePanel, CapsulePanelCollapseButton, CapsulePanelSection } from "../../../components/CapsulePanel";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
@@ -51,6 +54,12 @@ export function OverviewPage() {
   const [viewedRevision, setViewedRevision] = useState<number | null>(null);
   // 修订面板开合（壳层 CapsulePanel 受控；单分区面板，label 沿用「修订历史」）
   const [panelOpen, setPanelOpen] = useState(false);
+  // 修订按号排序（紧邻上一版据此取前一项，不假设编号连续）；
+  // hooks 置于提前 return 之前（patterns.md「修订对比」）
+  const sortedRevisions = useMemo(
+    () => [...(revisions.data ?? [])].sort((a, b) => a.revisionNo - b.revisionNo),
+    [revisions.data],
+  );
 
   if (doc.isPending) {
     return (
@@ -68,7 +77,10 @@ export function OverviewPage() {
   }
 
   const data = doc.data;
-  const viewed = viewedRevision != null ? revisions.data?.find((r) => r.revisionNo === viewedRevision) : undefined;
+  const viewedIndex =
+    viewedRevision != null ? sortedRevisions.findIndex((r) => r.revisionNo === viewedRevision) : -1;
+  const viewed = viewedIndex >= 0 ? sortedRevisions[viewedIndex] : undefined;
+  const previousRevision = viewedIndex > 0 ? sortedRevisions[viewedIndex - 1] : undefined;
   const bodyMd = viewed ? viewed.snapshot.bodyMd : data.bodyMd;
 
   return (
@@ -114,10 +126,14 @@ export function OverviewPage() {
         </div>
       </header>
 
-      {/* 历史版本查看提示条（UI-017 同款） */}
+      {/* 历史版本查看提示条（UI-017 同款；有上一版时注明对比对象） */}
       {viewed ? (
         <MessageBar intent="info" style={{ marginBottom: tokens.spacingVerticalM }}>
-          <MessageBarBody>{t("common.viewingHistory", { rev: viewed.revisionNo })}</MessageBarBody>
+          <MessageBarBody>
+            {previousRevision
+              ? t("common.viewingHistoryDiff", { rev: viewed.revisionNo, prev: previousRevision.revisionNo })
+              : t("common.viewingHistory", { rev: viewed.revisionNo })}
+          </MessageBarBody>
           <MessageBarActions>
             <Button appearance="primary" size="small" onClick={() => setViewedRevision(null)}>
               {t("common.backToCurrent")}
@@ -126,8 +142,13 @@ export function OverviewPage() {
         </MessageBar>
       ) : null}
 
-      {/* 正文：查看历史版时换装快照正文，其余只读渲染（CON-009） */}
-      <MarkdownBody>{bodyMd}</MarkdownBody>
+      {/* 正文：当前版/最旧历史版 Markdown 只读渲染（CON-009）；其余历史版
+          自动显示与紧邻上一版的单栏 diff（patterns.md「修订对比」） */}
+      {viewed && previousRevision ? (
+        <MarkdownDiffBody before={previousRevision.snapshot.bodyMd} after={viewed.snapshot.bodyMd} />
+      ) : (
+        <MarkdownBody>{bodyMd}</MarkdownBody>
+      )}
     </article>
   );
 }

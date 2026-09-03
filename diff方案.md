@@ -4,19 +4,19 @@ overview: 以纯前端 MDAST 语义比较生成单栏统一 Diff：相同块只�
 todos:
   - id: design-baseline
     content: 修订现有“无 diff”设计基线并固定语义比较范围
-    status: pending
+    status: completed
   - id: diff-engine
     content: 实现 MDAST 解析、规范化、序列对齐及容器递归合并
-    status: pending
+    status: completed
   - id: single-renderer
     content: 实现单实例 react-markdown 的 MarkdownDiffBody 与代码行渲染
-    status: pending
+    status: completed
   - id: integration-style
     content: 接入两类修订页面、主题样式、依赖白名单与 mock 数据
-    status: pending
+    status: completed
   - id: verification
-    content: 补齐算法测试并完成浏览器、Tauri 与全量工程校验
-    status: pending
+    content: 完成浏览器实览、长文档性能探针、Tauri 抽验与全量工程校验（2026-09-03 用户指令：跳过算法测试，直接调试）
+    status: completed
 isProject: false
 ---
 
@@ -56,13 +56,13 @@ flowchart LR
 ## 工程接入
 - 在 [`src/features/design/components/ItemDetailPage.tsx`](src/features/design/components/ItemDetailPage.tsx) 和 [`src/features/overview/components/OverviewPage.tsx`](src/features/overview/components/OverviewPage.tsx) 仅计算前后 `bodyMd` 并调用 `MarkdownDiffBody`；“何时显示 Diff”的页面交互不进入算法组件。
 - 在 [`src/styles.css`](src/styles.css) 增加 `.md-diff-body` 作用域样式：主题变量控制增删背景和边框，左侧同时显示 `+/-` 标记，不能只靠颜色；代码行使用块级 span，保持现有横向滚动。
-- 新增运行依赖 `unified`、`remark-parse`、`mdast-util-to-string`、`unist-util-visit`、`diff`，开发依赖 `@types/mdast`、`vitest`；同步 [`config/dependency-whitelist.json`](config/dependency-whitelist.json) 和 `package.json`。继续复用已有 `react-markdown`、`remark-gfm`，不引入编辑器或完整 Diff UI 组件。
+- 新增运行依赖 `unified`、`remark-parse`、`mdast-util-to-string`、`unist-util-visit`、`diff`，开发依赖 `@types/mdast`；同步 [`config/dependency-whitelist.json`](config/dependency-whitelist.json) 和 `package.json`。继续复用已有 `react-markdown`、`remark-gfm`，不引入编辑器或完整 Diff UI 组件。（2026-09-03 偏差留痕：用户指令跳过测试，未引入 `vitest`。）
 - 实施前先修订 [`docs/design/05-detailed-design/ui/pages/item-detail.md`](docs/design/05-detailed-design/ui/pages/item-detail.md)、[`docs/design/05-detailed-design/ui/pages/project-overview.md`](docs/design/05-detailed-design/ui/pages/project-overview.md)、[`docs/design/05-detailed-design/ui/patterns.md`](docs/design/05-detailed-design/ui/patterns.md) 与 [`docs/design/05-detailed-design/ui/README.md`](docs/design/05-detailed-design/ui/README.md)，移除当前“无 diff”基线并记录纯前端 AST 路径。
 
 ## 验证重点
-- 纯算法测试覆盖：完全相同、空文档、块增删改/移动、语法不同但渲染等价、嵌套有序/无序列表、任务列表、表格行和列结构变化、代码行及语言变化、引用链接、原始 HTML、超长未匹配区间降级。
+- 纯算法测试覆盖：完全相同、空文档、块增删改/移动、语法不同但渲染等价、嵌套有序/无序列表、任务列表、表格行和列结构变化、代码行及语言变化、引用链接、原始 HTML、超长未匹配区间降级。（2026-09-03 用户指令跳过测试；改为浏览器实览 + Node 性能探针覆盖同等场景。）
 - 合并树测试断言顺序、`data-diff` 标记、ordered list 序号和输入树不被修改；渲染测试断言仅有一个 Markdown 文档上下文、删除链接不可交互、代码行 class 正确。
-- 补强 [`src/api/mock/fixtures.ts`](src/api/mock/fixtures.ts) 的条目历史正文差异后，运行 `npm test`、`npm run check`，再分别在浏览器 mock 与 Tauri WebView 中检查 GFM 表格、代码横向滚动、明暗主题和长文档性能。
+- 补强 [`src/api/mock/fixtures.ts`](src/api/mock/fixtures.ts) 的条目历史正文差异后，运行 `npm run check`，再分别在浏览器 mock 与 Tauri WebView 中检查 GFM 表格、代码横向滚动、明暗主题和长文档性能。已实测：FR-001 r2 视图（代码行 -/+、紧凑列表项整项标记且序号保持、删除链接 `pointer-events: none`）、概览 r2 视图（新增节整体标记）、r1 纯快照与切回当前、明暗主题配色；Node 探针：500 块微改 185ms、3000 块（patience 降级）620ms、400+400 无锚点 30ms、一致短路 null。
 
 ## 明确不做
 - 不比较 HTML 字符串或 DOM；不按空行/源码行拆普通 Markdown。

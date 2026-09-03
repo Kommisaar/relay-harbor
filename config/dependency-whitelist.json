@@ -7,7 +7,8 @@
     "2026-08-28 图表选型（用户确认）：概览图表采用 @ant-design/charts（评价 Fluent charts 不成熟，callout 字号缺陷）。",
     "2026-08-28 @ant-design/graphs 预准入：M2 关系图可视化采用（替代此前预留的 @xyflow）；M2 启动时再安装，当前不装避免未用依赖。",
     "@fluentui/react-charts 已移出：2026-08-28 曾准入后被上述选型决定替代。",
-    "2026-09-02 概览页改版：remark-gfm 准入（UI-035 article 文档表格渲染；react-markdown v10 裸用无 GFM，维护型文档常含表格）。"
+    "2026-09-02 概览页改版：remark-gfm 准入（UI-035 article 文档表格渲染；react-markdown v10 裸用无 GFM，维护型文档常含表格）。",
+    "2026-09-03 修订对比（diff方案.md markdown-unified-diff）：unified/remark-parse/mdast-util-to-string/unist-util-visit/diff 准入（纯前端 MDAST 语义 diff，patterns.md「修订对比」；unified/remark-parse 本为 react-markdown 传递依赖，升级为直接依赖）；@types/mdast 开发准入。用户明确跳过测试，不装 vitest。"
   ],
   "dependencies": [
     "@ant-design/charts",
@@ -22,12 +23,18 @@
     "react-markdown",
     "react-router-dom",
     "remark-gfm",
+    "unified",
+    "remark-parse",
+    "mdast-util-to-string",
+    "unist-util-visit",
+    "diff",
     "zustand"
   ],
   "devDependencies": [
     "@tauri-apps/cli",
     "@types/react",
     "@types/react-dom",
+    "@types/mdast",
     "@vitejs/plugin-react",
     "dependency-cruiser",
     "typescript",

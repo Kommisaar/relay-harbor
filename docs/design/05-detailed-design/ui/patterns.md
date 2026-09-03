@@ -94,6 +94,43 @@ Griffel：Markdown 生成的子元素集合开放，无法逐一建样式，故�
 覆盖标题层级/列表/引用/代码块/表格/分隔线；组件本身只承担 article 语义
 与行高口径，不干预内容。消费方：条目详情（UI-017）、项目概览（UI-035）。
 
+## 修订对比（单栏 AST Diff，2026-09-03 用户指令；方案 markdown-unified-diff）
+
+查看历史版本时，正文区**自动**显示与修订序列中紧邻上一版的单栏合并
+diff：相同块只渲染一次，删除/新增块按原序交错；最旧版本无上一版与
+当前版本显示完整正文（快照语义不变）。消费方：条目详情（UI-017）、
+项目概览（UI-035）。口径与实现约束：
+
+- **比较渲染语义**（非源码/空行切分）：`*文本*` 与 `_文本_`、列表符号、
+  空白排版差异不产生差异；块移动首版按删除+新增呈现；不做词级/字符级
+  diff、块移动识别与后端预计算。
+- **纯前端 MDAST 路径**：unified + remark-parse + remark-gfm 解析
+  before/after（与 MarkdownBody 共享同一套 GFM 选项），引用式链接/
+  图片按 definition 自包含化（防合并树 identifier 冲突），语义规范化
+  （剥 position/data）后块序列对齐——Myers/LCS 锚定相同块 + 相邻未
+  匹配区间有上限的最小成本配对，超限保守降级整块增删；容器递归范围：
+  同型列表 listItem、表格 tableRow（列结构/对齐/表头变化整表增删）、
+  同语言代码块行级、blockquote 顶层块；HTML/图片/分隔线按原子节点。
+- **紧凑列表项整项标记（2026-09-03 走查实测修订）**：紧凑项
+  （spread=false）的内层段落会被 remark-rehype 解包，段落上的
+  data-diff 属性进不了 DOM（新旧文本裸拼在同一 li、标记静默丢失），
+  故紧凑项变化整项标删除+新增；spread 项内层段落保留、继续递归做
+  块级标记。有序列表的删除/新增项写显式 `value`（li 合法属性），
+  浏览器从 value 续排，后续项不因增删项扰动编号。
+- **单实例渲染**：共享 `MarkdownDiffBody`（`src/components/markdown-diff/`，
+  props 仅 `before`/`after` 两字符串）经自定义 remark 插件将合并 MDAST
+  交给**单个** react-markdown 实例（不按片段起多渲染器），代码行由
+  自定义 `code` renderer 按 DiffPlan 行操作输出 span；「何时显示
+  diff」的页面交互不进入算法组件。
+- **样式例外留痕**：同 `.md-body` 先例，diff 标记走 `src/styles.css`
+  作用域类 `.md-diff-body`——增删背景/左边框用主题 CSS 变量（明暗
+  自跟随），行首 `+/-` 伪元素标记（不只靠颜色），删除块内链接去活化
+  （`pointer-events: none`）。
+- 无新增 IPC/Rust 逻辑（CON-009 只读边界不变）：比较输入为修订快照
+  正文（`Revision` / `OverviewRevision` 的 `snapshot.bodyMd`），已随
+  修订列表一次取齐；「目标修订 + 紧邻上一版」由页面层按 revisionNo
+  排序取前一项，不假设修订号连续。
+
 ## 浮动胶囊面板（2026-09-03 用户指令升格为通用模式；修订时间线为其首个内容）
 
 壳层自 `RevisionTimeline` 抽为共享组件 `CapsulePanel`（2026-09-03，随

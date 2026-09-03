@@ -72,7 +72,31 @@ function makeItem(projectId: string, spec: ItemSpec): ItemDetail {
 
 const relayItems: ItemSpec[] = [
   // FR 功能需求
-  { code: "FR-001", title: "Agent 经 MCP 写入设计资产", revision: 3, updated: minutesAgo(26), metadata: { priority: "P0" } },
+  // FR-001 正文含代码块（2026-09-03 修订对比走查：r2 快照改写其中一行，
+  // 行级代码 diff 场景，见 revisionsFor）
+  {
+    code: "FR-001",
+    title: "Agent 经 MCP 写入设计资产",
+    revision: 3,
+    updated: minutesAgo(26),
+    metadata: { priority: "P0" },
+    body: [
+      "## 描述",
+      "",
+      "Agent 经本地受控 MCP 通道写入项目、条目、关系与任务等设计资产（写入口唯一，CON-009）。",
+      "",
+      "## 接入示例",
+      "",
+      "```json",
+      '{ "command": "create_item", "params": { "code": "FR-001" } }',
+      "```",
+      "",
+      "## 验收依据",
+      "",
+      "1. 全部业务写入仅经 MCP 命令；",
+      "2. 非法写入被拒绝并留痕（参见 [MCP 规范](https://modelcontextprotocol.io)）。",
+    ].join("\n"),
+  },
   { code: "FR-002", title: "项目创建与删除（MCP）", revision: 2, updated: daysAgo(2) },
   { code: "FR-003", title: "条目创建与编辑产生修订", revision: 3, updated: hoursAgo(3) },
   { code: "FR-004", title: "稳定编号分配", revision: 1, updated: daysAgo(6) },
@@ -212,10 +236,10 @@ const relayRelations: MockProject["relations"] = [
   { source: "UI-034", target: "FR-009", type: "relates" },
 ];
 
-function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus): Revision["snapshot"] {
+function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus, bodyMd?: string): Revision["snapshot"] {
   return {
     title: item.title,
-    bodyMd: item.bodyMd,
+    bodyMd: bodyMd ?? item.bodyMd,
     metadata: { ...item.metadata },
     status: statusOverride ?? item.status,
   };
@@ -224,7 +248,8 @@ function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus): Revision["sna
 function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
   const out: Revision[] = [];
   for (const item of items) {
-    // r1 一定是创建；有多修订的条目补中间版本（内容微变，供版本切换走查）
+    // r1 一定是创建；多修订条目的 r2/r3 快照正文差异化（2026-09-03 修订
+    // 对比走查：r2→r3 演示列表项删除 + 引用新增，r1→r2 演示小节新增）
     out.push({
       code: item.code,
       revisionNo: 1,
@@ -240,7 +265,22 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
         title: "修订正文与元数据",
         summary: `内容微调（${item.title}）`,
         changedAt: item.updatedAt + 3_600_000,
-        snapshot: snapshotOf(item, item.itemType === "TASK" ? "doing" : "in_review"),
+        snapshot: snapshotOf(
+          item,
+          item.itemType === "TASK" ? "doing" : "in_review",
+          [
+            // FR-001 的接入示例命令在 r2 改写（行级代码 diff 走查样本），
+            // 验收依据中的外链在 r2 移除（删除块内链接去活化走查样本）
+            item.bodyMd
+              .replace("{ \"command\": \"create_item\"", "{ \"command\": \"get_item\"")
+              .replace("（参见 [MCP 规范](https://modelcontextprotocol.io)）", ""),
+            "",
+            "## 评审记录",
+            "",
+            "- 2026-09-02 评审通过，验收口径见正文",
+            "- 补充性能基线对比数据（已复核）",
+          ].join("\n"),
+        ),
       });
     }
     if (item.currentRevision >= 3) {
@@ -250,7 +290,15 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
         title: item.status === "in_review" || item.status === "draft" ? "补充验收依据" : "确认定稿",
         summary: "",
         changedAt: item.updatedAt,
-        snapshot: snapshotOf(item),
+        snapshot: snapshotOf(item, undefined, [
+          item.bodyMd,
+          "",
+          "## 评审记录",
+          "",
+          "- 2026-09-02 评审通过，验收口径见正文",
+          "",
+          "> 跟进：性能基线已复核，无需追加任务",
+        ].join("\n")),
       });
     }
   }
@@ -319,6 +367,12 @@ const relayProject: MockProject = (() => {
     "- 基线确认流程与变更集预览界面",
     "- Markdown / JSON 确定性导入与基线快照",
     "- 依赖与追踪关系图可视化",
+    "",
+    "## 接入示例",
+    "",
+    "```json",
+    '{ "command": "get_item" }',
+    "```",
   ].join("\n");
   const r3Body = [
     r1Body,
@@ -372,6 +426,13 @@ const relayProject: MockProject = (() => {
     "| 桌面应用与 Plugin 版本漂移 | 能力协商与兼容版本检查 |",
     "| 本地接口被其他进程滥用 | 回环限制、随机端口、令牌与 Origin 校验 |",
     "| 业务写入唯一依赖 MCP 通道 | 托盘常驻、bridge 自动拉起应用与明确失败提示 |",
+    "",
+    "## 接入示例",
+    "",
+    "```json",
+    '{ "command": "get_item", "params": { "code": "FR-001" } }',
+    "// 本地受控 API：回环 + 令牌（CON-006）",
+    "```",
   ].join("\n");
   const overview: ProjectOverviewDoc = {
     title: "RelayHarbor 项目概览",

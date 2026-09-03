@@ -9,6 +9,11 @@
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { makeStyles } from "@fluentui/react-components";
+import type { PluggableList } from "unified";
+
+/** 共享 GFM 解析配置（patterns.md「Markdown 正文/修订对比」）：普通渲染与
+    diff 解析必须同一套语法口径，否则表格等 GFM 块在两种视图下语义不一致 */
+export const markdownRemarkPlugins: PluggableList = [remarkGfm];
 
 const useStyles = makeStyles({
   root: { lineHeight: 1.7 },
@@ -19,7 +24,7 @@ export function MarkdownBody({ children }: { children: string }) {
   const styles = useStyles();
   return (
     <div className={`md-body ${styles.root}`}>
-      <Markdown remarkPlugins={[remarkGfm]}>{children}</Markdown>
+      <Markdown remarkPlugins={markdownRemarkPlugins}>{children}</Markdown>
     </div>
   );
 }

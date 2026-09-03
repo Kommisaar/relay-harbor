@@ -41,6 +41,7 @@ const en = {
     detailPanel: "Details",
     collapsePanel: "Collapse panel",
     viewingHistory: "Viewing historical revision r{{rev}}",
+    viewingHistoryDiff: "Viewing historical revision r{{rev}} (diffed against r{{prev}})",
     backToCurrent: "Back to current",
     jumpTo: "Go to {{code}}",
   },
