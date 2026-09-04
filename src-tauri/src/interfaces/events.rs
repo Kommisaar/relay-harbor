@@ -5,20 +5,9 @@
 
 use serde::Serialize;
 
-#[derive(Serialize, Clone, Copy, specta::Type)]
-#[serde(rename_all = "lowercase")]
-// 变体随 http 发射点（ADR-006）实现后开始构造
-#[allow(dead_code)]
-pub enum ChangeKind {
-    Item,
-    Relation,
-    Task,
-    Project,
-    /// 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）。
-    /// rename_all=lowercase 会产 "projectdoc"，契约线名带下划线，故显式 rename。
-    #[serde(rename = "project_doc")]
-    ProjectDoc,
-}
+// ChangeKind 单一事实来源在 domain/changeset.rs（services 的 ChangeSummary
+// 携带、本层 DTO 复用——services 禁引 interfaces）。
+pub use crate::domain::changeset::ChangeKind;
 
 /// 失效信号（不承载数据）：projectId 定位失效粒度，前端按项目前缀失效查询。
 #[derive(Serialize, Clone, tauri_specta::Event, specta::Type)]

@@ -138,6 +138,55 @@ pub fn init_logging(paths: &RuntimePaths) -> tracing_appender::non_blocking::Wor
     guard
 }
 
+// ---- MCP 通道运行时（INT-005 bridge.json，P5 落地）----
+
+/// MCP 协议版本（INT-005 握手契约；随协议演进走设计修订）
+pub const MCP_PROTOCOL_VERSION: &str = "2025-06-18";
+
+/// bridge.json 发现文件（读取方仅 mcp-bridge；version 字段保证格式演进可检测）
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BridgeDiscovery {
+    pub version: u32,
+    pub port: u16,
+    pub token: String,
+    pub pid: u32,
+    pub protocol_version: String,
+    pub updated_at: String,
+}
+
+/// 回环随机端口分配：先绑 127.0.0.1:0 占位，监听器交 axum 复用
+///（消除「分配后绑定」竞态；除该端口外无任何网络监听，NFR-005）
+pub fn bind_loopback() -> io::Result<(std::net::TcpListener, u16)> {
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0))?;
+    let port = listener.local_addr()?.port();
+    Ok((listener, port))
+}
+
+/// 会话令牌（每会话轮换：应用启动生成新令牌并原子更新 bridge.json，
+/// 旧令牌全部失效）。两个 UUIDv4 拼接 ≈244bit 随机（留痕：避免引入 rand
+/// 依赖；INT-005 要求 256bit 量级，244bit 足够会话隔离强度）。
+pub fn token_new() -> String {
+    format!(
+        "{}{}",
+        uuid::Uuid::new_v4().simple(),
+        uuid::Uuid::new_v4().simple()
+    )
+}
+
+/// 原子写出 bridge.json（临时文件 + rename，权限继承数据目录——
+/// Windows 下 ~/.relayharbor 位于用户 profile，默认 ACL 仅当前用户可读写，
+/// NFR-005 文件权限要求的实现基线）
+pub fn write_bridge_json(paths: &RuntimePaths, discovery: &BridgeDiscovery) -> io::Result<()> {
+    let text = serde_json::to_string_pretty(discovery)
+        .map_err(|e| io::Error::other(format!("bridge.json 序列化失败：{e}")))?;
+    let path = paths.data_root.join("bridge.json");
+    let tmp = path.with_extension("json.tmp");
+    fs::write(&tmp, text)?;
+    fs::rename(&tmp, &path)?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

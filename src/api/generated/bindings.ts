@@ -163,10 +163,14 @@ exportProgressEvent: "export-progress-event"
 export type AppSettings = { theme: ThemeSetting; language: LanguageSetting; closeBehavior: CloseBehavior; lastLocation: string | null }
 export type AppVersionResult = { version: string }
 export type BlockedByDto = { code: string; title: string }
+/**
+ * 变更类别（data-changed 事件的失效粒度分类，ADR-006/INT-001）。
+ * 定义于 domain（services 的 ChangeSummary 携带、interfaces/events 的
+ * specta DTO 复用——services 禁引 interfaces，单一事实来源在此）。
+ */
 export type ChangeKind = "item" | "relation" | "task" | "project" | 
 /**
- * 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）。
- * rename_all=lowercase 会产 "projectdoc"，契约线名带下划线，故显式 rename。
+ * 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）
  */
 "project_doc"
 export type CloseBehavior = 

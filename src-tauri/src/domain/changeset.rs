@@ -48,6 +48,24 @@ impl ContentChanges {
     }
 }
 
+/// 变更类别（data-changed 事件的失效粒度分类，ADR-006/INT-001）。
+/// 定义于 domain（services 的 ChangeSummary 携带、interfaces/events 的
+/// specta DTO 复用——services 禁引 interfaces，单一事实来源在此）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, specta::Type)]
+pub enum ChangeKind {
+    #[serde(rename = "item")]
+    Item,
+    #[serde(rename = "relation")]
+    Relation,
+    #[serde(rename = "task")]
+    Task,
+    #[serde(rename = "project")]
+    Project,
+    /// 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）
+    #[serde(rename = "project_doc")]
+    ProjectDoc,
+}
+
 /// 变更操作（领域形态；由 services 从工具参数组装，经端口原子提交）
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChangeOp {
