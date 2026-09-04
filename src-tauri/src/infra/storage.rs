@@ -31,9 +31,9 @@ use crate::domain::item::{
     DisplayCode, Item, ItemId, ItemType, ItemStatus,
 };
 use crate::domain::ports::{
-    DeleteStats, DayRevisionCount, EdgeByCode, ItemChange, ItemFilter, ProjectDocChange,
-    RecentRevision, RelationChange, RelationFilter, Storage, StorageError, StorageResult,
-    TypeStatusCount,
+    DeleteStats, DayRevisionCount, EdgeByCode, ItemChange, ItemFilter, NotFoundKind,
+    ProjectDocChange, RecentRevision, RelationChange, RelationFilter, Storage, StorageError,
+    StorageResult, TypeStatusCount,
 };
 use crate::domain::project::{Project, ProjectDoc, ProjectDocKey, ProjectId};
 use crate::domain::relation::{
@@ -53,6 +53,14 @@ use records::{
 impl From<sqlx::Error> for StorageError {
     fn from(e: sqlx::Error) -> Self {
         StorageError::Internal(e.to_string())
+    }
+}
+
+/// 条目未命中（写路径；kind 供 interfaces 映射 ITEM_NOT_FOUND）
+fn not_found_item(code: &str) -> StorageError {
+    StorageError::NotFound {
+        kind: NotFoundKind::Item,
+        id: code.to_string(),
     }
 }
 
@@ -248,7 +256,10 @@ impl Storage for SqliteStorage {
             .await
             .map_err(internal)?;
         if result.rows_affected() == 0 {
-            return Err(StorageError::NotFound(format!("项目 {project_id}")));
+            return Err(StorageError::NotFound {
+                kind: NotFoundKind::Project,
+                id: project_id.to_string(),
+            });
         }
         tx.commit().await.map_err(internal)?;
         tracing::info!(project = %project_id, items, relations, revisions, "删除项目（级联）");
@@ -374,7 +385,7 @@ impl Storage for SqliteStorage {
         let mut tx = self.begin_tx().await?;
         let item = Self::get_item_tx(&mut tx, project_id, code)
             .await?
-            .ok_or_else(|| StorageError::NotFound(format!("条目 {code}")))?;
+            .ok_or_else(|| not_found_item(code))?;
         // 终态禁内容编辑（BR-002 例外/BR-003：终态条目不可变更）
         if item.status.is_terminal() {
             return Err(DomainError::Terminal {
@@ -479,7 +490,7 @@ impl Storage for SqliteStorage {
         let mut tx = self.begin_tx().await?;
         let item = Self::get_item_tx(&mut tx, project_id, code)
             .await?
-            .ok_or_else(|| StorageError::NotFound(format!("条目 {code}")))?;
+            .ok_or_else(|| not_found_item(code))?;
         ensure_revision_match(code, expected_revision, item.current_revision).map_err(domain)?;
         can_transition(item.item_type, code, &item.status, &to).map_err(domain)?;
 
@@ -950,6 +961,25 @@ impl Storage for SqliteStorage {
         let mut sep = qb.separated(", ");
         for id in ids {
             sep.push_bind(id.to_string());
+        }
+        qb.push(") ORDER BY display_code");
+        let rows = qb.build().fetch_all(&self.read).await.map_err(internal)?;
+        rows.iter().map(map_item).collect()
+    }
+
+    async fn get_items_by_codes(
+        &self,
+        project_id: ProjectId,
+        codes: &[String],
+    ) -> StorageResult<Vec<Item>> {
+        if codes.is_empty() {
+            return Ok(Vec::new());
+        }
+        let mut qb = QueryBuilder::new("SELECT * FROM items WHERE project_id = ");
+        qb.push_bind(project_id.to_string()).push(" AND display_code IN (");
+        let mut sep = qb.separated(", ");
+        for code in codes {
+            sep.push_bind(code.clone());
         }
         qb.push(") ORDER BY display_code");
         let rows = qb.build().fetch_all(&self.read).await.map_err(internal)?;

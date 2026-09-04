@@ -15,7 +15,7 @@ use super::project::ProjectId;
 pub type RelationId = Uuid;
 
 /// 关系类型（五种；统一读作「A 对 B 做某事」，A 动者在前）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RelationType {
     /// A 派生自 B（B 是 A 的来源）
@@ -136,28 +136,33 @@ pub fn find_depends_cycle(
     None
 }
 
-/// 影响闭包命中（node = 条目编号；depth = 距起点跳数，直连上游为 1）
+/// 影响闭包命中（node = 条目编号；depth = 距起点跳数，直连上游为 1；
+/// via = 首次发现该节点的关系类型——多条路径命中时取先到者）
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImpactHit {
     pub code: String,
     pub depth: u32,
+    pub via: RelationType,
 }
 
 /// 影响闭包（DOM-003：从 T 沿 derives/satisfies/depends 入边反向多跳，
 /// 「谁派生自我、谁满足我、谁依赖我」）。edges 为参与影响遍历的
-///（source, target）编号对；depth 上限 ≤10（get_context 默认 3），
-/// 访问集去重防环兜底（depends 无环已由写入保证）。
-/// 结果按 depth 升序、同 depth 按编号字典序——确定性输出。
+///（source, target, type）编号三元组；max_depth 上限 ≤10（get_context
+/// 默认 3、get_impact 固定 3），访问集去重防环兜底（depends 无环已由
+/// 写入保证）。结果按 depth 升序、同 depth 按编号字典序——确定性输出。
 pub fn impact_closure(
     start: &str,
-    edges: &[(String, String)],
+    edges: &[(String, String, RelationType)],
     max_depth: u32,
 ) -> Vec<ImpactHit> {
-    // 反向邻接表：target → 其 source 集合（入边）
-    let mut incoming: std::collections::HashMap<&str, Vec<&str>> =
+    // 反向邻接表：target → 其 (source, type) 入边集合（按 source 排序保证确定性）
+    let mut incoming: std::collections::HashMap<&str, Vec<(&str, RelationType)>> =
         std::collections::HashMap::new();
-    for (s, t) in edges {
-        incoming.entry(t.as_str()).or_default().push(s.as_str());
+    for (s, t, ty) in edges {
+        incoming.entry(t.as_str()).or_default().push((s.as_str(), *ty));
+    }
+    for list in incoming.values_mut() {
+        list.sort_unstable();
     }
 
     let mut visited: HashSet<&str> = HashSet::from([start]);
@@ -168,11 +173,12 @@ pub fn impact_closure(
         depth += 1;
         let mut next_frontier: Vec<&str> = Vec::new();
         for node in &frontier {
-            for &affected in incoming.get(node).into_iter().flatten() {
+            for &(affected, via) in incoming.get(node).into_iter().flatten() {
                 if visited.insert(affected) {
                     hits.push(ImpactHit {
                         code: affected.to_string(),
                         depth,
+                        via,
                     });
                     next_frontier.push(affected);
                 }

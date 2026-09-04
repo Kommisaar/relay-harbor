@@ -21,13 +21,25 @@ use super::project::{Project, ProjectDoc, ProjectDocKey, ProjectId};
 use super::relation::{Relation, RelationId, RelationType};
 use super::revision::{ProjectDocRevision, Revision};
 
+/// 查找未命中种类（interfaces 按命令主题映射 UI 短码：
+/// Project→PROJECT_NOT_FOUND、Item→ITEM_NOT_FOUND、ProjectDoc→DOC_NOT_FOUND）
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NotFoundKind {
+    Project,
+    Item,
+    ProjectDoc,
+}
+
 /// 端口错误：领域拒绝（映射业务错误码）、查找未命中（services 映射
 /// ERR_NOT_FOUND——「检查标识，不重试」）或存储内部故障
 ///（services 包装为 ERR_INTERNAL，保留 cause 链供日志）
 #[derive(Debug, Clone)]
 pub enum StorageError {
     Domain(DomainError),
-    NotFound(String),
+    NotFound {
+        kind: NotFoundKind,
+        id: String,
+    },
     Internal(String),
 }
 
@@ -41,7 +53,9 @@ impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::Domain(e) => write!(f, "{e}"),
-            StorageError::NotFound(msg) => write!(f, "未找到：{msg}"),
+            StorageError::NotFound { kind, id } => {
+                write!(f, "未找到 {kind:?}：{id}")
+            }
             StorageError::Internal(msg) => write!(f, "存储内部错误：{msg}"),
         }
     }
@@ -224,6 +238,13 @@ pub trait Storage: Send + Sync {
         &self,
         project_id: ProjectId,
         ids: &[ItemId],
+    ) -> StorageResult<Vec<Item>>;
+
+    /// 按编号批量取（影响闭包/看板阻塞上游的编号→条目解析；行数 ≤ 入参）
+    async fn get_items_by_codes(
+        &self,
+        project_id: ProjectId,
+        codes: &[String],
     ) -> StorageResult<Vec<Item>>;
 
     /// 修订历史（revision_no 升序；不可变表只读）

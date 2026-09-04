@@ -93,36 +93,70 @@ fn depends_cycle_detection() {
     );
 }
 
+/// 参与影响遍历的编号边三元组（source, target, type）
+fn tedges(
+    triples: &[(&str, &str, RelationType)],
+) -> Vec<(String, String, RelationType)> {
+    triples
+        .iter()
+        .map(|(s, t, ty)| (s.to_string(), t.to_string(), *ty))
+        .collect()
+}
+
 #[test]
 fn impact_closure_reverse_multihop() {
     // 链：A derives B、B derives C → C 的影响 = B(1)、A(2)
-    let es = edges(&[("A", "B"), ("B", "C")]);
+    let es = tedges(&[("A", "B", RelationType::Derives), ("B", "C", RelationType::Derives)]);
     let hits = impact_closure("C", &es, 10);
     assert_eq!(hits.len(), 2);
     assert_eq!(hits[0].code, "B");
     assert_eq!(hits[0].depth, 1);
+    assert_eq!(hits[0].via, RelationType::Derives);
     assert_eq!(hits[1].code, "A");
     assert_eq!(hits[1].depth, 2);
 
-    // 深度上限（get_context 默认 3、上限 10；此处直接钳 2）
-    let chain = edges(&[("A", "B"), ("B", "C"), ("C", "D"), ("D", "E")]);
+    // 混合类型 via：A satisfies D；traces 不参与——调用方过滤后传入（services 同款）
+    let es: Vec<_> = tedges(&[
+        ("A", "D", RelationType::Satisfies),
+        ("T", "D", RelationType::Traces),
+    ])
+    .into_iter()
+    .filter(|(_, _, ty)| ty.participates_in_impact())
+    .collect();
+    let hits = impact_closure("D", &es, 10);
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].via, RelationType::Satisfies);
+
+    // 深度上限（get_context 默认 3、上限 10；get_impact 固定 3）
+    let chain = tedges(&[
+        ("A", "B", RelationType::Depends),
+        ("B", "C", RelationType::Depends),
+        ("C", "D", RelationType::Depends),
+        ("D", "E", RelationType::Depends),
+    ]);
     let hits = impact_closure("E", &chain, 2);
     assert_eq!(
         hits.iter().map(|h| (h.code.as_str(), h.depth)).collect::<Vec<_>>(),
         vec![("D", 1), ("C", 2)]
     );
 
-    // 菱形去重：A→B、A→C、B→D、C→D → D 的影响 = B(1)、C(1)、A(2) 各一次
-    let diamond = edges(&[("A", "B"), ("A", "C"), ("B", "D"), ("C", "D")]);
+    // 菱形去重：A→B、A→C、B→D、C→D → D 的影响 = B(1)、C(1)、A(2) 各一次；
+    // A 的 via 取首发现边（B 路径，字典序在前）
+    let diamond = tedges(&[
+        ("A", "B", RelationType::Satisfies),
+        ("A", "C", RelationType::Satisfies),
+        ("B", "D", RelationType::Satisfies),
+        ("C", "D", RelationType::Satisfies),
+    ]);
     let hits = impact_closure("D", &diamond, 10);
     assert_eq!(
         hits.iter().map(|h| (h.code.as_str(), h.depth)).collect::<Vec<_>>(),
         vec![("B", 1), ("C", 1), ("A", 2)]
     );
+    assert_eq!(hits[2].via, RelationType::Satisfies);
 
-    // 孤立起点
+    // 孤立起点 / depth=0 → 空
     assert!(impact_closure("Z", &diamond, 10).is_empty());
-    // depth=0 → 空
     assert!(impact_closure("D", &diamond, 0).is_empty());
 }
 

@@ -159,7 +159,7 @@ async fn occ_conflict_rejected() {
                 }
             )
             .await,
-        Err(StorageError::NotFound(_))
+        Err(StorageError::NotFound { .. })
     ));
 }
 
@@ -483,7 +483,7 @@ async fn cascade_delete_and_isolation() {
     // 重复删除 → NotFound
     assert!(matches!(
         storage.delete_project(pid).await,
-        Err(StorageError::NotFound(_))
+        Err(StorageError::NotFound { .. })
     ));
 }
 
