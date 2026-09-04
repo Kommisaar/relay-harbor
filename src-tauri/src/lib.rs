@@ -67,6 +67,12 @@ pub fn run() {
             let state = tauri::async_runtime::block_on(state::AppState::init())
                 .expect("组合根装配失败");
             app.manage(state);
+            // 本地 MCP 通道（P5(2/2)）：回环随机端口 + 每会话令牌轮换 +
+            // bridge.json 刷新（INT-005）+ 后台 axum 服务。失败 fail-fast。
+            let handle = app.handle().clone();
+            let state = app.state::<state::AppState>();
+            tauri::async_runtime::block_on(interfaces::http::start(&handle, &state))
+                .expect("MCP 通道启动失败");
             Ok(())
         })
         .run(tauri::generate_context!())
