@@ -41,9 +41,9 @@ const zh = {
     revisionHistory: "修订历史",
     detailPanel: "详情面板",
     collapsePanel: "收起面板",
-    viewingHistory: "正在查看历史版本 r{{rev}}",
-    viewingHistoryDiff: "正在查看历史版本 r{{rev}}（与 r{{prev}} 对比）",
-    backToCurrent: "回到当前版本",
+    comparePrevious: "与上一版对比",
+    currentRevisionChip: "当前版本 r{{rev}}",
+    oldRevisionChip: "旧修订版本 r{{rev}}",
     jumpTo: "跳转 {{code}}",
   },
   projects: {

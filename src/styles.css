@@ -122,6 +122,40 @@ body {
   }
 }
 
+/* 页面内容渐入（2026-09-04，patterns.md「页面内容渐入」）：路由进入
+   （页面重挂）时内容整体淡入 + 16px 上浮（2026-09-04 用户指令由对齐
+   侧栏的 8px 上调；侧栏入场保持 8px 不同步），令牌与门控同侧栏入场
+   动画（Griffel makeStyles @media 槽位不生成规则，动画类落全局刻意
+   例外）。类注入分两路：page-enter 挂 usePageContainerStyles 容器
+   （无 tree 内 fixed 元素的页面）；条目详情/项目概览经 PageFadeIn
+   内容层包裹——浮动胶囊是 tree 内 position:fixed，transform 会使动画
+   祖先临时成为 fixed 的包含块、胶囊 200ms 跳位后弹回，故胶囊不入
+   动画（留痕） */
+@keyframes page-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter {
+    animation-name: page-content-enter;
+    /* 400ms：2026-09-04 用户反馈「速度太快」由 durationNormal(200ms) 上调，
+       令牌外值留痕（patterns.md「页面内容渐入」四改） */
+    animation-duration: 400ms;
+    animation-timing-function: var(--curveDecelerateMid);
+    animation-fill-mode: backwards;
+    /* 分块错落延迟（patterns.md「页面内容渐入」三改）：PageFadeIn 经
+       行内 --page-enter-delay 注入；容器级整块注入缺省 0ms */
+    animation-delay: var(--page-enter-delay, 0ms);
+  }
+}
+
 /* 修订历史时间线行（2026-09-03，patterns.md「修订时间线」）：Fluent Radio
    的 label 默认 flex-grow 0（shrink-to-fit），行内容网格撑不满行宽，
    时间列右对齐随之失效——Fluent 内部元素、Griffel 无后代选择器，与

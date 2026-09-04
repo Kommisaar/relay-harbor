@@ -9,7 +9,7 @@
 // （工作台 1080 / 列表 960 / 设置 640 / 看板不限宽）。
 // 已知偏差（留痕）：活动栏展开（+152）时标题右移，锚定以默认收起态为基准；
 // 25vw 含滚动条宽，标题实际起点右偏约 4px，实览不可辨。
-import { makeStyles, tokens } from "@fluentui/react-components";
+import { makeStyles, mergeClasses, tokens } from "@fluentui/react-components";
 
 /** 页面族：决定限宽档位与左栏偏移（设置页无侧栏） */
 export type PageContainerFamily = "workbench" | "list" | "settings" | "board";
@@ -36,7 +36,12 @@ const useStyles = makeStyles({
   },
 });
 
-export function usePageContainerStyles(family: PageContainerFamily): string {
+export function usePageContainerStyles(family: PageContainerFamily, enter = true): string {
   const styles = useStyles();
-  return styles[family];
+  // 页面内容渐入（patterns.md「页面内容渐入」）：容器统一注入 page-enter，
+  // 路由进入（重挂）播放一次。承载 tree 内 fixed 胶囊的页面
+  // （条目详情/项目概览）传 false 关闭，改用 PageFadeIn 内容层包裹
+  // 胶囊之外内容——transform 会使动画祖先临时成为 fixed 包含块、
+  // 胶囊动画期跳位（留痕）
+  return mergeClasses(styles[family], enter && "page-enter");
 }

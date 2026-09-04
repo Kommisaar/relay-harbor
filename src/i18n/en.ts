@@ -40,9 +40,9 @@ const en = {
     revisionHistory: "Revision history",
     detailPanel: "Details",
     collapsePanel: "Collapse panel",
-    viewingHistory: "Viewing historical revision r{{rev}}",
-    viewingHistoryDiff: "Viewing historical revision r{{rev}} (diffed against r{{prev}})",
-    backToCurrent: "Back to current",
+    comparePrevious: "Compare with previous",
+    currentRevisionChip: "Current revision r{{rev}}",
+    oldRevisionChip: "Historical revision r{{rev}}",
     jumpTo: "Go to {{code}}",
   },
   projects: {

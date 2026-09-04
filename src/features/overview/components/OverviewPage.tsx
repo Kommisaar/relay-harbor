@@ -1,23 +1,16 @@
 // 项目概览页（UI-035，2026-09-02 用户指令新增，同日改版 article 文档形态）：
 // 每项目一篇可维护文档——头部（标题 + rN·操作者·相对时间）+ Markdown 正文
 // + 修订时间线版本切换（UI-017 同款共享件）；进入项目默认落地页。
-// 历史版正文自动显示与紧邻上一版的单栏 diff（2026-09-03 用户指令，
-// patterns.md「修订对比」；最旧版无上一版显示纯快照）。
+// 与上一版的单栏 diff 由修订历史分区标题行的「与上一版对比」手动开关控制
+// （2026-09-03 同日第八次设计修订：废止自动 diff 与版本提示条 MessageBar；
+// 默认关显快照、开显 diff，当前版同样适用；回到当前 = 点时间线当前版）。
 // 数据 get_project_overview / list_project_overview_revisions（INT-001
 // 白名单 15→16），Agent 经 MCP 维护，UI 只读渲染；文档内容不参与 i18n
 // （与条目正文同策略）。
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  Button,
-  MessageBar,
-  MessageBarActions,
-  MessageBarBody,
-  Title2,
-  makeStyles,
-  tokens,
-} from "@fluentui/react-components";
+import { Title2, makeStyles, tokens } from "@fluentui/react-components";
 import { ArrowExpand16Regular, History16Regular } from "@fluentui/react-icons";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
@@ -26,6 +19,9 @@ import { MarkdownBody } from "../../../components/MarkdownBody";
 import { MarkdownDiffBody } from "../../../components/markdown-diff/MarkdownDiffBody";
 import { CapsulePanel, CapsulePanelCollapseButton, CapsulePanelSection } from "../../../components/CapsulePanel";
 import { RevisionTimeline } from "../../../components/RevisionTimeline";
+import { RevisionDiffToggle } from "../../../components/RevisionDiffToggle";
+import { MetaChip } from "../../../components/MetaChip";
+import { PageFadeIn } from "../../../components/PageFadeIn";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { useProjectOverviewQuery, useProjectOverviewRevisionsQuery } from "../queries";
 
@@ -44,14 +40,18 @@ const useStyles = makeStyles({
 export function OverviewPage() {
   const styles = useStyles();
   // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」；
-  // article 形态与条目详情页同口径）
-  const page = usePageContainerStyles("workbench");
+  // article 形态与条目详情页同口径）。承载 fixed 胶囊 → 容器不参与渐入
+  // 动画（enter=false），内容层 PageFadeIn 包裹（patterns.md「页面内容渐入」）
+  const page = usePageContainerStyles("workbench", false);
   const { t } = useTranslation();
   const { projectId = "" } = useParams();
   const doc = useProjectOverviewQuery(projectId);
   const revisions = useProjectOverviewRevisionsQuery(projectId);
   /** null = 当前版本；数字 = 查看该历史版本快照（UI-017 同款，本地 state 不入 URL） */
   const [viewedRevision, setViewedRevision] = useState<number | null>(null);
+  // 修订对比开关（patterns.md「修订对比」，2026-09-03 手动开关口径）：
+  // 页面本地 state——默认关（快照）、跨修订切换保持、离开页面即重置
+  const [diffOn, setDiffOn] = useState(false);
   // 修订面板开合（壳层 CapsulePanel 受控；单分区面板，label 沿用「修订历史」）
   const [panelOpen, setPanelOpen] = useState(false);
   // 修订按号排序（紧邻上一版据此取前一项，不假设编号连续）；
@@ -80,7 +80,15 @@ export function OverviewPage() {
   const viewedIndex =
     viewedRevision != null ? sortedRevisions.findIndex((r) => r.revisionNo === viewedRevision) : -1;
   const viewed = viewedIndex >= 0 ? sortedRevisions[viewedIndex] : undefined;
-  const previousRevision = viewedIndex > 0 ? sortedRevisions[viewedIndex - 1] : undefined;
+  // diff 基准 = 紧邻上一版（不假设编号连续）：查看历史版取排序前一项；
+  // 查看当前版取最后一项的前一项（开关对当前版同样适用 = 最新修订与
+  // 上一版对比）；最旧版/仅 1 条修订无上一版 → 开关禁用
+  const beforeSnapshot =
+    viewedIndex > 0
+      ? sortedRevisions[viewedIndex - 1]
+      : viewedIndex === -1 && sortedRevisions.length >= 2
+        ? sortedRevisions[sortedRevisions.length - 2]
+        : undefined;
   const bodyMd = viewed ? viewed.snapshot.bodyMd : data.bodyMd;
 
   return (
@@ -98,11 +106,18 @@ export function OverviewPage() {
         onOpenChange={setPanelOpen}
       >
         {/* 单分区（2026-09-03 用户指令：统一条目详情面板样式——首分区
-            小节标题行 + 行内收起按钮；separated=false，上方即面板顶缘） */}
+            小节标题行 + 行内收起按钮；separated=false，上方即面板顶缘）；
+            标题行右缘 = 对比开关（收起按钮左侧，patterns.md「修订对比」）
+            + 收起按钮 */}
         <CapsulePanelSection
           title={t("common.revisionHistory")}
           separated={false}
-          action={<CapsulePanelCollapseButton onCollapse={() => setPanelOpen(false)} />}
+          action={
+            <>
+              <RevisionDiffToggle checked={diffOn} disabled={beforeSnapshot === undefined} onChange={setDiffOn} />
+              <CapsulePanelCollapseButton onCollapse={() => setPanelOpen(false)} />
+            </>
+          }
         >
           <RevisionTimeline
             entries={revisions.data ?? []}
@@ -113,42 +128,41 @@ export function OverviewPage() {
         </CapsulePanelSection>
       </CapsulePanel>
 
-      {/* 头部：文档标题 + rN·相对时间（形态对齐条目详情 UI-016；actor 元信息
-          2026-09-03 用户指令随修订模型移除） */}
-      <header className={styles.header}>
-        <div className={styles.titleRow}>
-          <Title2>{data.title}</Title2>
-        </div>
-        <div className={styles.metaRow}>
-          <span>
-            r{data.revisionNo} · <RelativeTime timestamp={data.changedAt} />
-          </span>
-        </div>
-      </header>
-
-      {/* 历史版本查看提示条（UI-017 同款；有上一版时注明对比对象） */}
-      {viewed ? (
-        <MessageBar intent="info" style={{ marginBottom: tokens.spacingVerticalM }}>
-          <MessageBarBody>
-            {previousRevision
-              ? t("common.viewingHistoryDiff", { rev: viewed.revisionNo, prev: previousRevision.revisionNo })
-              : t("common.viewingHistory", { rev: viewed.revisionNo })}
-          </MessageBarBody>
-          <MessageBarActions>
-            <Button appearance="primary" size="small" onClick={() => setViewedRevision(null)}>
-              {t("common.backToCurrent")}
-            </Button>
-          </MessageBarActions>
-        </MessageBar>
-      ) : null}
-
-      {/* 正文：当前版/最旧历史版 Markdown 只读渲染（CON-009）；其余历史版
-          自动显示与紧邻上一版的单栏 diff（patterns.md「修订对比」） */}
-      {viewed && previousRevision ? (
-        <MarkdownDiffBody before={previousRevision.snapshot.bodyMd} after={viewed.snapshot.bodyMd} />
-      ) : (
-        <MarkdownBody>{bodyMd}</MarkdownBody>
-      )}
+      {/* 内容层分块错落渐入（patterns.md「页面内容渐入」三改）：
+          头部层 0ms 先入、正文层 +80ms 随后；胶囊在外不入动画 */}
+      <PageFadeIn>
+        {/* 头部：文档标题 + 修订元信息双 chip（形态对齐条目详情 UI-016；
+            actor 元信息 2026-09-03 用户指令随修订模型移除） */}
+        <header className={styles.header}>
+          <div className={styles.titleRow}>
+            <Title2>{data.title}</Title2>
+          </div>
+          <div className={styles.metaRow}>
+            {/* 修订元信息两枚 chip（patterns.md「头部元信息 chip」2026-09-04
+                二改，与条目详情统一）：版本身份随查看态切换；时间随查看版
+                （历史版显该版修订时间） */}
+            <MetaChip>
+              {viewed
+                ? t("common.oldRevisionChip", { rev: viewed.revisionNo })
+                : t("common.currentRevisionChip", { rev: data.revisionNo })}
+            </MetaChip>
+            <MetaChip>
+              <RelativeTime timestamp={viewed ? viewed.changedAt : data.changedAt} />
+            </MetaChip>
+          </div>
+        </header>
+      </PageFadeIn>
+      <PageFadeIn delay={140}>
+        {/* 正文：开关关/无上一版 → Markdown 只读渲染（CON-009）；开关开且有
+            上一版 → 与其单栏 diff（patterns.md「修订对比」；当前版开着 =
+            最新修订与上一版对比）。版本提示条 MessageBar 已随手动开关口径
+            废除（2026-09-03），回到当前 = 点时间线当前版 */}
+        {diffOn && beforeSnapshot ? (
+          <MarkdownDiffBody before={beforeSnapshot.snapshot.bodyMd} after={bodyMd} />
+        ) : (
+          <MarkdownBody>{bodyMd}</MarkdownBody>
+        )}
+      </PageFadeIn>
     </article>
   );
 }
