@@ -10,15 +10,15 @@ import { unified } from "unified";
 import remarkParse from "remark-parse";
 import { visit } from "unist-util-visit";
 import type { Content, Definition, ImageReference, LinkReference, Root, RootContent } from "mdast";
-import { markdownRemarkPlugins } from "../MarkdownBody";
+import { markdownRemarkPlugins } from "../markdownRemarkPlugins";
 
 const parser = unified().use(remarkParse).use(markdownRemarkPlugins);
 
 /** 解析 Markdown 为 MDAST（无 position/data，引用已自包含化） */
 export function parseMarkdown(md: string): Root {
   const root = parser.parse(md) as Root;
-  stripMetadata(root);
   inlineReferences(root);
+  stripMetadata(root);
   return root;
 }
 
@@ -31,35 +31,54 @@ function stripMetadata(root: Root): void {
 
 function collectDefinitions(root: Root): Map<string, Definition> {
   const map = new Map<string, Definition>();
-  for (const child of root.children) {
-    if (child.type === "definition") {
-      map.set(child.identifier, child);
+  // definition 在 blockquote/list 等容器内也对整篇文档生效；CommonMark
+  // 重复定义采用首次出现者，不能用无条件 Map.set 让后项覆盖。
+  visit(root, "definition", (definition) => {
+    if (!map.has(definition.identifier)) {
+      map.set(definition.identifier, definition);
     }
-  }
+  });
   return map;
 }
 
 function inlineReferences(root: Root): void {
   const definitions = collectDefinitions(root);
-  const resolve = (node: LinkReference | ImageReference): string =>
-    definitions.get(node.identifier)?.url ?? "";
-  const walk = (content: Content): Content => {
+  const walk = (content: Content): Content | null => {
+    if (content.type === "definition") {
+      return null;
+    }
     if (content.type === "linkReference") {
-      return {
-        type: "link",
-        url: resolve(content),
-        children: content.children.map(walk) as typeof content.children,
-      };
+      const definition = definitions.get(content.identifier);
+      if (definition !== undefined) {
+        return {
+          type: "link",
+          url: definition.url,
+          title: definition.title ?? null,
+          children: content.children
+            .map(walk)
+            .filter((child): child is NonNullable<typeof child> => child !== null) as typeof content.children,
+        };
+      }
     }
     if (content.type === "imageReference") {
-      return { type: "image", url: resolve(content), alt: content.alt ?? null };
+      const definition = definitions.get(content.identifier);
+      if (definition !== undefined) {
+        return {
+          type: "image",
+          url: definition.url,
+          title: definition.title ?? null,
+          alt: content.alt ?? null,
+        };
+      }
     }
     if ("children" in content) {
-      content.children = content.children.map(walk) as typeof content.children;
+      content.children = content.children
+        .map(walk)
+        .filter((child): child is NonNullable<typeof child> => child !== null) as typeof content.children;
     }
     return content;
   };
   root.children = root.children
-    .filter((child) => child.type !== "definition")
-    .map((child) => walk(child) as RootContent);
+    .map(walk)
+    .filter((child): child is RootContent => child !== null);
 }

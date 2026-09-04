@@ -9,9 +9,11 @@
 // 版本呈现，不做单元格级 diff）；同语言代码块 diffLines 行级比较，变更
 // 代码节点写 data-diff-code 键供自定义 code renderer 查 CodeLineOp 表；
 // blockquote 递归顶层块。HTML/图片/分隔线按原子节点处理。
-import { diffLines } from "diff";
+import { diffArrays } from "diff";
 import type { Blockquote, Code, List, ListItem, RootContent, Table } from "mdast";
+import { visit } from "unist-util-visit";
 import { alignBlocks, type BlockOp } from "./alignSequence";
+import { semanticSignature } from "./normalizeNode";
 import { parseMarkdown } from "./parseMarkdown";
 
 export interface CodeLineOp {
@@ -54,11 +56,18 @@ function isRecursableContainer(a: RootContent, b: RootContent): boolean {
       return (
         b.type === "table" &&
         tableColumnCount(a) === tableColumnCount(b) &&
-        alignsEqual(a.align ?? [], b.align ?? [])
+        alignsEqual(a.align ?? [], b.align ?? []) &&
+        tableHeadersEqual(a, b)
       );
     case "code":
       return b.type === "code" && a.lang === b.lang && (a.meta ?? null) === (b.meta ?? null);
     case "list":
+      return (
+        b.type === "list" &&
+        a.ordered === b.ordered &&
+        (!a.ordered || (a.start ?? 1) === (b.start ?? 1)) &&
+        (a.spread ?? false) === (b.spread ?? false)
+      );
     case "blockquote":
       return true;
     default:
@@ -75,6 +84,16 @@ function alignsEqual(x: NonNullable<Table["align"]>, y: NonNullable<Table["align
   return x.length === y.length && x.every((value, index) => (value ?? null) === (y[index] ?? null));
 }
 
+function tableHeadersEqual(a: Table, b: Table): boolean {
+  const aHeader = a.children[0];
+  const bHeader = b.children[0];
+  return (
+    aHeader !== undefined &&
+    bHeader !== undefined &&
+    semanticSignature(aHeader) === semanticSignature(bHeader)
+  );
+}
+
 function nextGroup(ctx: MergeContext): string {
   ctx.groupKey += 1;
   return `dg-${ctx.groupKey}`;
@@ -86,8 +105,35 @@ function mark<T extends RootContent>(
   group: string,
   extra?: Record<string, string> | undefined,
 ): T {
-  node.data = { hProperties: { "data-diff": kind, "data-diff-group": group, ...extra } };
-  return node;
+  const marked = {
+    ...node,
+    data: {
+      ...node.data,
+      hProperties: {
+        ...node.data?.hProperties,
+        "data-diff": kind,
+        "data-diff-group": group,
+        ...extra,
+      },
+    },
+  } as T;
+  if (kind === "removed") {
+    // CSS pointer-events 只拦鼠标；给删除子树中的链接加程序化标记，由
+    // MarkdownDiffBody 的 a renderer 去掉 href，避免键盘仍可激活旧链接。
+    visit(marked, (link) => {
+      if (link.type !== "link" && link.type !== "linkReference") {
+        return;
+      }
+      link.data = {
+        ...link.data,
+        hProperties: {
+          ...link.data?.hProperties,
+          "data-diff-disabled-link": "true",
+        },
+      };
+    });
+  }
+  return marked;
 }
 
 function mergeOps<T extends RootContent>(ops: readonly BlockOp<T>[], ctx: MergeContext): T[] {
@@ -128,6 +174,8 @@ function mergeChanged<T extends RootContent>(before: T, after: T, ctx: MergeCont
   switch (after.type) {
     case "list":
       return [mergeList(before as List, after, ctx) as T];
+    case "table":
+      return [mergeTable(before as Table, after, ctx) as T];
     case "blockquote": {
       const ops = alignBlocks((before as Blockquote).children, after.children, isRecursableContainer);
       const merged: Blockquote = { ...after, children: mergeOps(ops, ctx) as typeof after.children };
@@ -145,6 +193,17 @@ function mergeChanged<T extends RootContent>(before: T, after: T, ctx: MergeCont
   }
 }
 
+/** 表头/列结构已在 isRecursableContainer 中确认一致；仅递归正文行。 */
+function mergeTable(before: Table, after: Table, ctx: MergeContext): Table {
+  const header = after.children[0];
+  const bodyOps = alignBlocks(before.children.slice(1), after.children.slice(1), () => true);
+  const body = mergeOps(bodyOps, ctx) as Table["children"];
+  return {
+    ...after,
+    children: header === undefined ? body : [header, ...body],
+  };
+}
+
 /**
  * 列表合并：列表项序列逐项走 mergeOps 语义，同时维护前后版本各自的
  * 项位置——有序列表的删除/新增项写显式 value，浏览器从 value 续排，
@@ -153,6 +212,9 @@ function mergeChanged<T extends RootContent>(before: T, after: T, ctx: MergeCont
 function mergeList(before: List, after: List, ctx: MergeContext): List {
   const ops = alignBlocks(before.children, after.children, () => true);
   const items: ListItem[] = [];
+  const ordered = after.ordered === true;
+  const beforeStart = before.start ?? 1;
+  const afterStart = after.start ?? 1;
   let beforePos = 0;
   let afterPos = 0;
   let runKind: "removed" | "added" | null = null;
@@ -162,7 +224,7 @@ function mergeList(before: List, after: List, ctx: MergeContext): List {
       case "equal":
         beforePos += 1;
         afterPos += 1;
-        items.push(op.node);
+        items.push(withListItemValue(op.node, afterStart + afterPos - 1, ordered));
         runKind = null;
         break;
       case "removed":
@@ -173,10 +235,10 @@ function mergeList(before: List, after: List, ctx: MergeContext): List {
         }
         if (op.type === "removed") {
           beforePos += 1;
-          items.push(markListItem(op.node, "removed", runGroup, beforePos, after.ordered));
+          items.push(markListItem(op.node, "removed", runGroup, beforeStart + beforePos - 1, ordered));
         } else {
           afterPos += 1;
-          items.push(markListItem(op.node, "added", runGroup, afterPos, after.ordered));
+          items.push(markListItem(op.node, "added", runGroup, afterStart + afterPos - 1, ordered));
         }
         break;
       }
@@ -185,8 +247,8 @@ function mergeList(before: List, after: List, ctx: MergeContext): List {
         beforePos += 1;
         afterPos += 1;
         items.push(
-          markListItem(op.before, "removed", group, beforePos, after.ordered),
-          markListItem(op.after, "added", group, afterPos, after.ordered),
+          markListItem(op.before, "removed", group, beforeStart + beforePos - 1, ordered),
+          markListItem(op.after, "added", group, afterStart + afterPos - 1, ordered),
         );
         runKind = null;
         break;
@@ -194,7 +256,16 @@ function mergeList(before: List, after: List, ctx: MergeContext): List {
       case "changed": {
         beforePos += 1;
         afterPos += 1;
-        items.push(...mergeChangedListItem(op.before, op.after, ctx, beforePos, afterPos, after.ordered));
+        items.push(
+          ...mergeChangedListItem(
+            op.before,
+            op.after,
+            ctx,
+            beforeStart + beforePos - 1,
+            afterStart + afterPos - 1,
+            ordered,
+          ),
+        );
         runKind = null;
         break;
       }
@@ -213,19 +284,29 @@ function mergeChangedListItem(
   before: ListItem,
   after: ListItem,
   ctx: MergeContext,
-  beforePos: number,
-  afterPos: number,
-  ordered: boolean | null | undefined,
+  beforeValue: number,
+  afterValue: number,
+  ordered: boolean,
 ): ListItem[] {
-  if (!after.spread) {
+  if (
+    !before.spread ||
+    !after.spread ||
+    (before.checked ?? null) !== (after.checked ?? null)
+  ) {
     const group = nextGroup(ctx);
     return [
-      markListItem(before, "removed", group, beforePos, ordered),
-      markListItem(after, "added", group, afterPos, ordered),
+      markListItem(before, "removed", group, beforeValue, ordered),
+      markListItem(after, "added", group, afterValue, ordered),
     ];
   }
   const ops = alignBlocks(before.children, after.children, isRecursableContainer);
-  return [{ ...after, children: mergeOps(ops, ctx) as ListItem["children"] }];
+  return [
+    withListItemValue(
+      { ...after, children: mergeOps(ops, ctx) as ListItem["children"] },
+      afterValue,
+      ordered,
+    ),
+  ];
 }
 
 /** 有序列表的增删项补显式 value（li 的合法属性），保持原序号呈现 */
@@ -233,10 +314,27 @@ function markListItem(
   node: ListItem,
   kind: "removed" | "added",
   group: string,
-  position: number,
-  ordered: boolean | null | undefined,
+  value: number,
+  ordered: boolean,
 ): ListItem {
-  return mark(node, kind, group, ordered ? { value: String(position) } : undefined);
+  return mark(node, kind, group, ordered ? { value: String(value) } : undefined);
+}
+
+/** 合并后的有序列表每一项都钉住其目标版序号，删除项不会扰乱后续项。 */
+function withListItemValue(node: ListItem, value: number, ordered: boolean): ListItem {
+  if (!ordered) {
+    return node;
+  }
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      hProperties: {
+        ...node.data?.hProperties,
+        value: String(value),
+      },
+    },
+  };
 }
 
 function mergeCode(before: Code, after: Code, ctx: MergeContext): Code {
@@ -253,16 +351,11 @@ function mergeCode(before: Code, after: Code, ctx: MergeContext): Code {
 
 function codeLineOps(beforeValue: string, afterValue: string): CodeLineOp[] {
   const ops: CodeLineOp[] = [];
-  for (const change of diffLines(beforeValue, afterValue)) {
-    if (change.value.length === 0) {
-      continue;
-    }
-    const lines = change.value.split("\n");
-    if (lines[lines.length - 1] === "") {
-      lines.pop();
-    }
+  // 自行按换行切 token 后交给 diffArrays：与 diffLines 的字符串 chunk
+  // 再 split/pop 不同，这会保留末尾空行（空 token 也是合法代码行）。
+  for (const change of diffArrays(beforeValue.split("\n"), afterValue.split("\n"))) {
     const kind = change.added ? "added" : change.removed ? "removed" : "equal";
-    for (const text of lines) {
+    for (const text of change.value) {
       ops.push({ type: kind, text });
     }
   }

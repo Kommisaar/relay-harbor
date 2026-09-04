@@ -62,29 +62,56 @@ function emitGap<T extends DiffNode>(
   isRecursable: (a: T, b: T) => boolean,
   ops: BlockOp<T>[],
 ): void {
-  const { pairs, pairedAfter } = pairGap(before, after, bStart, bEnd, aStart, aEnd);
-  for (let i = bStart; i < bEnd; i += 1) {
-    const node = before[i];
-    if (node === undefined) {
-      continue;
+  const pairs = pairGap(before, after, bStart, bEnd, aStart, aEnd, isRecursable);
+  let i = bStart;
+  let j = aStart;
+
+  // pairs 同时按 before/after 单调递增。围绕每个配对点用双游标输出，
+  // 才能保证过滤 added 后仍是 before 原序、过滤 removed 后仍是 after
+  // 原序；原实现先遍历全部 before、最后补未配对 after，会把配对点之前
+  // 的新增块错误挪到配对点之后。
+  for (const [pairedI, pairedJ] of pairs) {
+    while (i < pairedI) {
+      const node = before[i];
+      if (node !== undefined) {
+        ops.push({ type: "removed", node });
+      }
+      i += 1;
     }
-    const j = pairs.get(i);
-    const partner = j === undefined ? undefined : after[j];
-    if (j !== undefined && partner !== undefined) {
+    while (j < pairedJ) {
+      const node = after[j];
+      if (node !== undefined) {
+        ops.push({ type: "added", node });
+      }
+      j += 1;
+    }
+
+    const node = before[pairedI];
+    const partner = after[pairedJ];
+    if (node !== undefined && partner !== undefined) {
       ops.push(
         isRecursable(node, partner)
           ? { type: "changed", before: node, after: partner }
           : { type: "paired", before: node, after: partner },
       );
-    } else {
+    }
+    i = pairedI + 1;
+    j = pairedJ + 1;
+  }
+
+  while (i < bEnd) {
+    const node = before[i];
+    if (node !== undefined) {
       ops.push({ type: "removed", node });
     }
+    i += 1;
   }
-  for (let j = aStart; j < aEnd; j += 1) {
+  while (j < aEnd) {
     const node = after[j];
-    if (node !== undefined && !pairedAfter.has(j)) {
+    if (node !== undefined) {
       ops.push({ type: "added", node });
     }
+    j += 1;
   }
 }
 
@@ -96,13 +123,14 @@ function pairGap<T extends DiffNode>(
   bEnd: number,
   aStart: number,
   aEnd: number,
-): { pairs: Map<number, number>; pairedAfter: Set<number> } {
+  isRecursable: (a: T, b: T) => boolean,
+): Array<[number, number]> {
   const pairs = new Map<number, number>();
   const pairedAfter = new Set<number>();
   const bLen = bEnd - bStart;
   const aLen = aEnd - aStart;
   if (bLen === 0 || aLen === 0 || bLen * aLen > PAIR_CELL_CAP) {
-    return { pairs, pairedAfter };
+    return [];
   }
   const afterTexts = new Map<number, string>();
   for (let j = aStart; j < aEnd; j += 1) {
@@ -127,7 +155,18 @@ function pairGap<T extends DiffNode>(
       if (pairedAfter.has(j)) {
         continue;
       }
-      const score = similarity(beforeText, afterTexts.get(j) ?? "");
+      const afterNode = after[j];
+      // 不把段落、标题、代码块等不同结构仅因文字相似而配成一次修改；
+      // 同型但容器属性不兼容的节点仍可 paired 为整块删除+新增。
+      if (afterNode === undefined || beforeNode.type !== afterNode.type) {
+        continue;
+      }
+      // 一对一缺口中的兼容容器即使正文完全改写也应下钻（如代码 a→b）；
+      // 多候选缺口仍按文本相似度选伙伴，否则“前插一行 + 修改下一行”
+      // 会把旧行误配给新插入行。
+      const score = bLen === 1 && aLen === 1 && isRecursable(beforeNode, afterNode)
+        ? 1
+        : similarity(beforeText, afterTexts.get(j) ?? "");
       if (score > bestScore) {
         bestScore = score;
         bestJ = j;
@@ -139,7 +178,7 @@ function pairGap<T extends DiffNode>(
       nextJ = bestJ + 1;
     }
   }
-  return { pairs, pairedAfter };
+  return [...pairs.entries()];
 }
 
 function similarityText(text: string): string {
@@ -221,14 +260,21 @@ function patienceMatches(a: readonly string[], b: readonly string[]): Array<[num
   };
   const countA = count(a);
   const countB = count(b);
+  const uniqueIndexB = new Map<string, number>();
+  for (let j = 0; j < b.length; j += 1) {
+    const sig = b[j];
+    if (sig !== undefined && countB.get(sig) === 1) {
+      uniqueIndexB.set(sig, j);
+    }
+  }
   const candidates: Array<[number, number]> = [];
   for (let i = 0; i < a.length; i += 1) {
     const sig = a[i];
     if (sig === undefined || countA.get(sig) !== 1 || countB.get(sig) !== 1) {
       continue;
     }
-    const j = b.indexOf(sig);
-    if (j >= 0) {
+    const j = uniqueIndexB.get(sig);
+    if (j !== undefined) {
       candidates.push([i, j]);
     }
   }

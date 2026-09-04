@@ -7,13 +7,8 @@
 // 组件内 Griffel 只承担行高口径。模板串仅含一个 Griffel 结果 + 静态类，
 // 不触 AGENTS.md「多 Griffel 结果禁拼接」坑。
 import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { makeStyles } from "@fluentui/react-components";
-import type { PluggableList } from "unified";
-
-/** 共享 GFM 解析配置（patterns.md「Markdown 正文/修订对比」）：普通渲染与
-    diff 解析必须同一套语法口径，否则表格等 GFM 块在两种视图下语义不一致 */
-export const markdownRemarkPlugins: PluggableList = [remarkGfm];
+import { markdownRemarkPlugins } from "./markdownRemarkPlugins";
 
 const useStyles = makeStyles({
   root: { lineHeight: 1.7 },

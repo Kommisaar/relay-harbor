@@ -11,7 +11,7 @@ import Markdown, { type Components } from "react-markdown";
 import { makeStyles } from "@fluentui/react-components";
 import type { Pluggable } from "unified";
 import type { Root, RootContent } from "mdast";
-import { markdownRemarkPlugins } from "../MarkdownBody";
+import { markdownRemarkPlugins } from "../markdownRemarkPlugins";
 import { buildDiffPlan, type CodeLineOp } from "./buildDiffTree";
 
 const useStyles = makeStyles({
@@ -27,10 +27,16 @@ export function MarkdownDiffBody({ before, after }: MarkdownDiffBodyProps) {
   const styles = useStyles();
   const plan = useMemo(() => buildDiffPlan(before, after), [before, after]);
   const remarkPlugins = useMemo(
-    () => (plan ? [createTreeInjectPlugin(plan.children)] : markdownRemarkPlugins),
+    // 注入合并树时仍要挂 GFM：remark-gfm 同时注册 mdast→hast 的表格等
+    // 处理器；只挂 inject 会让合并树里的 table 节点按未知块丢掉。
+    () =>
+      plan ? [...markdownRemarkPlugins, createTreeInjectPlugin(plan.children)] : markdownRemarkPlugins,
     [plan],
   );
-  const components = useMemo<Components>(() => ({ code: createCodeRenderer(plan?.codeOps) }), [plan]);
+  const components = useMemo<Components>(
+    () => ({ code: createCodeRenderer(plan?.codeOps), a: DiffLink, table: DiffTable }),
+    [plan],
+  );
   return (
     <div className={`md-body md-diff-body ${styles.root}`}>
       <Markdown remarkPlugins={remarkPlugins} components={components}>
@@ -51,22 +57,33 @@ function createTreeInjectPlugin(children: RootContent[]): Pluggable {
 
 function createCodeRenderer(codeOps: Map<string, CodeLineOp[]> | undefined): NonNullable<Components["code"]> {
   return function DiffCode(props) {
-    const rawKey = props.node?.properties?.["data-diff-code"];
+    const { node, children, ...rest } = props;
+    const rawKey = node?.properties?.["data-diff-code"];
     const ops = typeof rawKey === "string" ? codeOps?.get(rawKey) : undefined;
     if (ops === undefined || ops.length === 0) {
-      return <code className={props.className}>{props.children}</code>;
+      // 必须透传 data-diff/data-diff-group：整块代码增删或语言变化不走
+      // codeOps，旧实现仅传 className 导致核心差异标记静默丢失。
+      return <code {...rest}>{children}</code>;
     }
     return (
-      <code className={props.className}>
+      <code {...rest}>
         {ops.map((op, index) => {
-          const text = op.text.length > 0 ? op.text : "\u200B";
           return op.type === "equal" ? (
-            <span key={index} className="md-diff-line">
-              {text}
+            <span
+              key={index}
+              className="md-diff-line"
+              data-empty-line={op.text.length === 0 ? "true" : undefined}
+            >
+              {op.text}
             </span>
           ) : (
-            <span key={index} className="md-diff-line" data-diff={op.type}>
-              {text}
+            <span
+              key={index}
+              className="md-diff-line"
+              data-diff={op.type}
+              data-empty-line={op.text.length === 0 ? "true" : undefined}
+            >
+              {op.text}
             </span>
           );
         })}
@@ -74,3 +91,36 @@ function createCodeRenderer(codeOps: Map<string, CodeLineOp[]> | undefined): Non
     );
   };
 }
+
+/** 删除内容中的链接降为普通文本：去掉 href，也不再进入 Tab 序列。 */
+const DiffLink: NonNullable<Components["a"]> = (props) => {
+  const { node, children, href, target, rel, ...rest } = props;
+  const disabled = node?.properties?.["data-diff-disabled-link"] === "true";
+  return disabled ? (
+    <span {...rest}>{children}</span>
+  ) : (
+    <a {...rest} href={href} target={target} rel={rel}>
+      {children}
+    </a>
+  );
+};
+
+/** 整表增删需用普通块容器承载标记；直接给 table 加 ::before 会生成
+    匿名表格盒，给 tr 加则会挤出额外列。行级标记仍留在 tr 上由 CSS 处理。 */
+const DiffTable: NonNullable<Components["table"]> = (props) => {
+  const { node, children, ...rest } = props;
+  const kind = node?.properties?.["data-diff"];
+  const group = node?.properties?.["data-diff-group"];
+  if (kind !== "removed" && kind !== "added") {
+    return <table {...rest}>{children}</table>;
+  }
+  return (
+    <div
+      className="md-diff-table-block"
+      data-diff={kind}
+      data-diff-group={typeof group === "string" ? group : undefined}
+    >
+      <table>{children}</table>
+    </div>
+  );
+};

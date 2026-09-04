@@ -44,8 +44,11 @@ function semanticValue(node: DiffNode): unknown {
       return { t: node.type, url: node.url, title: node.title ?? null, c: node.children.map(semanticValue) };
     case "image":
       return { t: node.type, url: node.url, title: node.title ?? null, alt: node.alt ?? null };
-    case "html":
     case "text":
+      // 普通 HTML 文本会折叠 ASCII 空白；软换行、连续空格等仅源码
+      // 排版变化不应触发“渲染语义”差异。NBSP 不在此归一化范围内。
+      return { t: node.type, value: node.value.replace(/[ \t\r\n\f]+/gu, " ") };
+    case "html":
     case "inlineCode":
     case "yaml":
       return { t: node.type, value: node.value };

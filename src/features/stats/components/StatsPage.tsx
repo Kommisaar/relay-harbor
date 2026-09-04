@@ -20,6 +20,7 @@ import { useCardLiftStyles } from "../../../components/useCardLiftStyles";
 import { History24Regular } from "@fluentui/react-icons";
 import { EmptyState } from "../../../components/EmptyState";
 import { ErrorState } from "../../../components/ErrorState";
+import { PageFadeIn } from "../../../components/PageFadeIn";
 import { PageTitle } from "../../../components/PageTitle";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
@@ -98,8 +99,10 @@ const useStyles = makeStyles({
 
 export function StatsPage() {
   const styles = useStyles();
-  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」）
-  const page = usePageContainerStyles("workbench");
+  // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」）。
+  // 容器渐入关闭（enter=false）：本页内容四层错落（patterns.md「页面内容渐入」五改），
+  // 骨架屏/错误态/空态分支不播入场
+  const page = usePageContainerStyles("workbench", false);
   const lift = useCardLiftStyles();
   const { t } = useTranslation();
   const { projectId = "" } = useParams();
@@ -185,125 +188,136 @@ export function StatsPage() {
 
   return (
     <div className={page}>
-      <PageTitle>{t("stats.title")}</PageTitle>
+      {/* 内容层四块错落渐入（patterns.md「页面内容渐入」五改）：
+          标题 0 / 状态卡行 140 / 图表行 280 / 最近修订卡 420，步进 140、
+          末层恰落总量钳制 420 */}
+      <PageFadeIn>
+        <PageTitle>{t("stats.title")}</PageTitle>
+      </PageFadeIn>
 
       {/* 状态统计卡片：环形图（环心总量）+ 下方状态图例（彩色计数清单） */}
-      <div className={styles.statRow}>
-        <Card className={mergeClasses(styles.statCard, lift.root)}>
-          <Title3>{t("stats.statItems")}</Title3>
-          <div className={styles.statBody}>
-            <Pie
-              data={itemPieData}
-              angleField="value"
-              colorField="type"
-              innerRadius={0.62}
-              height={150}
-              theme={chartTheme}
-              legend={false}
-              label={false}
-              tooltip={(d: { type: string; value: number }) => ({ name: d.type, value: d.value })}
-              interaction={{ tooltip: { render: tooltipRender } }}
-              annotations={centerTotal(itemVisibleTotal)}
-            />
-            <div className={styles.chips}>
-              {ITEM_STATUSES.map((s, i) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={mergeClasses(styles.chip, hiddenItems.has(s) && styles.chipHidden)}
-                  aria-pressed={!hiddenItems.has(s)}
-                  onClick={() => setHiddenItems(toggled(s, hiddenItems))}
-                >
-                  <Badge appearance="ghost" color="subtle" style={{ backgroundColor: palette[i], color: "#fff" }}>
-                    {data.itemByStatus[s]}
-                  </Badge>
-                  <Text size={200}>{t(`status.${s}`)}</Text>
-                </button>
-              ))}
+      <PageFadeIn delay={140}>
+        <div className={styles.statRow}>
+          <Card className={mergeClasses(styles.statCard, lift.root)}>
+            <Title3>{t("stats.statItems")}</Title3>
+            <div className={styles.statBody}>
+              <Pie
+                data={itemPieData}
+                angleField="value"
+                colorField="type"
+                innerRadius={0.62}
+                height={150}
+                theme={chartTheme}
+                legend={false}
+                label={false}
+                tooltip={(d: { type: string; value: number }) => ({ name: d.type, value: d.value })}
+                interaction={{ tooltip: { render: tooltipRender } }}
+                annotations={centerTotal(itemVisibleTotal)}
+              />
+              <div className={styles.chips}>
+                {ITEM_STATUSES.map((s, i) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={mergeClasses(styles.chip, hiddenItems.has(s) && styles.chipHidden)}
+                    aria-pressed={!hiddenItems.has(s)}
+                    onClick={() => setHiddenItems(toggled(s, hiddenItems))}
+                  >
+                    <Badge appearance="ghost" color="subtle" style={{ backgroundColor: palette[i], color: "#fff" }}>
+                      {data.itemByStatus[s]}
+                    </Badge>
+                    <Text size={200}>{t(`status.${s}`)}</Text>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </Card>
-        <Card className={mergeClasses(styles.statCard, lift.root)}>
-          <Title3>{t("stats.statTasks")}</Title3>
-          <div className={styles.statBody}>
-            <Pie
-              data={taskPieData}
-              angleField="value"
-              colorField="type"
-              innerRadius={0.62}
-              height={150}
-              theme={chartTheme}
-              legend={false}
-              label={false}
-              tooltip={(d: { type: string; value: number }) => ({ name: d.type, value: d.value })}
-              interaction={{ tooltip: { render: tooltipRender } }}
-              annotations={centerTotal(taskVisibleTotal)}
-            />
-            <div className={styles.chips}>
-              {TASK_STATUSES.map((s, i) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={mergeClasses(styles.chip, hiddenTasks.has(s) && styles.chipHidden)}
-                  aria-pressed={!hiddenTasks.has(s)}
-                  onClick={() => setHiddenTasks(toggled(s, hiddenTasks))}
-                >
-                  <Badge appearance="ghost" color="subtle" style={{ backgroundColor: palette[i], color: "#fff" }}>
-                    {data.taskByStatus[s]}
-                  </Badge>
-                  <Text size={200}>{t(`status.${s}`)}</Text>
-                </button>
-              ))}
+          </Card>
+          <Card className={mergeClasses(styles.statCard, lift.root)}>
+            <Title3>{t("stats.statTasks")}</Title3>
+            <div className={styles.statBody}>
+              <Pie
+                data={taskPieData}
+                angleField="value"
+                colorField="type"
+                innerRadius={0.62}
+                height={150}
+                theme={chartTheme}
+                legend={false}
+                label={false}
+                tooltip={(d: { type: string; value: number }) => ({ name: d.type, value: d.value })}
+                interaction={{ tooltip: { render: tooltipRender } }}
+                annotations={centerTotal(taskVisibleTotal)}
+              />
+              <div className={styles.chips}>
+                {TASK_STATUSES.map((s, i) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={mergeClasses(styles.chip, hiddenTasks.has(s) && styles.chipHidden)}
+                    aria-pressed={!hiddenTasks.has(s)}
+                    onClick={() => setHiddenTasks(toggled(s, hiddenTasks))}
+                  >
+                    <Badge appearance="ghost" color="subtle" style={{ backgroundColor: palette[i], color: "#fff" }}>
+                      {data.taskByStatus[s]}
+                    </Badge>
+                    <Text size={200}>{t(`status.${s}`)}</Text>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        </Card>
-      </div>
+          </Card>
+        </div>
+      </PageFadeIn>
 
       {/* 图表卡片行（2026-09-02 用户指令：类型分布只占一半，另一栏活动图） */}
-      <div className={styles.chartRow}>
-        <Card className={mergeClasses(styles.chartCard, lift.root)}>
-          <Title3>{t("stats.typeDistribution")}</Title3>
-          <Column
-            data={typeColumnData}
-            xField="type"
-            yField="value"
-            colorField="name"
-            height={280}
-            theme={chartTheme}
-            legend={{ position: "bottom" }}
-            tooltip={(d: { name: string; value: number }) => ({ name: d.name, value: d.value })}
-            interaction={{ tooltip: { render: tooltipRender } }}
-          />
-        </Card>
-        <Card className={mergeClasses(styles.chartCard, lift.root)}>
-          <Title3>{t("stats.activityChart")}</Title3>
-          <ActivityChart days={data.revisionsByDay} />
-        </Card>
-      </div>
+      <PageFadeIn delay={280}>
+        <div className={styles.chartRow}>
+          <Card className={mergeClasses(styles.chartCard, lift.root)}>
+            <Title3>{t("stats.typeDistribution")}</Title3>
+            <Column
+              data={typeColumnData}
+              xField="type"
+              yField="value"
+              colorField="name"
+              height={280}
+              theme={chartTheme}
+              legend={{ position: "bottom" }}
+              tooltip={(d: { name: string; value: number }) => ({ name: d.name, value: d.value })}
+              interaction={{ tooltip: { render: tooltipRender } }}
+            />
+          </Card>
+          <Card className={mergeClasses(styles.chartCard, lift.root)}>
+            <Title3>{t("stats.activityChart")}</Title3>
+            <ActivityChart days={data.revisionsByDay} />
+          </Card>
+        </div>
+      </PageFadeIn>
 
       {/* 最近修订时间线（跨条目，list_recent_revisions 支撑；2026-09-02
           用户指令：曾短暂与阻塞提醒并排双卡，随后阻塞卡片整个移除，
           恢复独占一栏） */}
-      <Card className={mergeClasses(styles.sectionCard, lift.root)}>
-        <Title3>{t("stats.recentRevisions")}</Title3>
-        {recent.data?.map((r) => (
-          <div key={`${r.code}-${r.revisionNo}`} className={styles.revision}>
-            <Link to={`/projects/${projectId}/items/${r.code}`} className={mergeClasses(styles.codeLink, styles.link)}>
-              {r.code}
-            </Link>
-            <span>
-              <Text size={300}>{r.title}</Text>
-              <span className={styles.revisionMeta}>
-                {" "}
-                r{r.revisionNo} · {r.summary}
+      <PageFadeIn delay={420}>
+        <Card className={mergeClasses(styles.sectionCard, lift.root)}>
+          <Title3>{t("stats.recentRevisions")}</Title3>
+          {recent.data?.map((r) => (
+            <div key={`${r.code}-${r.revisionNo}`} className={styles.revision}>
+              <Link to={`/projects/${projectId}/items/${r.code}`} className={mergeClasses(styles.codeLink, styles.link)}>
+                {r.code}
+              </Link>
+              <span>
+                <Text size={300}>{r.title}</Text>
+                <span className={styles.revisionMeta}>
+                  {" "}
+                  r{r.revisionNo} · {r.summary}
+                </span>
               </span>
-            </span>
-            <span className={styles.revisionMeta}>
-              <RelativeTime timestamp={r.changedAt} />
-            </span>
-          </div>
-        ))}
-      </Card>
+              <span className={styles.revisionMeta}>
+                <RelativeTime timestamp={r.changedAt} />
+              </span>
+            </div>
+          ))}
+        </Card>
+      </PageFadeIn>
     </div>
   );
 }

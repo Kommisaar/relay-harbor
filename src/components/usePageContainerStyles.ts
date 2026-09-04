@@ -39,9 +39,8 @@ const useStyles = makeStyles({
 export function usePageContainerStyles(family: PageContainerFamily, enter = true): string {
   const styles = useStyles();
   // 页面内容渐入（patterns.md「页面内容渐入」）：容器统一注入 page-enter，
-  // 路由进入（重挂）播放一次。承载 tree 内 fixed 胶囊的页面
-  // （条目详情/项目概览）传 false 关闭，改用 PageFadeIn 内容层包裹
-  // 胶囊之外内容——transform 会使动画祖先临时成为 fixed 包含块、
-  // 胶囊动画期跳位（留痕）
+  // 路由进入（重挂）播放一次。两页传 false 关闭、改走 PageFadeIn 内容层：
+  // 条目详情/项目概览承载 tree 内 fixed 胶囊（transform 会使动画祖先
+  // 临时成为 fixed 包含块、胶囊动画期跳位）；项目统计为四层错落（五改）。
   return mergeClasses(styles[family], enter && "page-enter");
 }

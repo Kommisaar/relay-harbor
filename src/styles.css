@@ -171,32 +171,32 @@ body {
    MDAST 的 data.hProperties 透出，Griffel 无后代选择器）。配色取
    FluentProvider 主题 CSS 变量，明暗自跟随；行首 +/- 标记使增删不依赖
    颜色单通道；删除块内链接去活化（旧内容不可交互） */
-.md-diff-body [data-diff="removed"],
-.md-diff-body [data-diff="added"] {
+.md-diff-body [data-diff="removed"]:not(tr):not(table),
+.md-diff-body [data-diff="added"]:not(tr):not(table) {
   position: relative;
   border-left: 3px solid;
   border-radius: var(--borderRadiusSmall);
   padding-left: 1.6em;
 }
-.md-diff-body [data-diff="removed"] {
+.md-diff-body [data-diff="removed"]:not(tr):not(table) {
   background: var(--colorPaletteRedBackground2);
   border-color: var(--colorPaletteRedForeground2);
 }
-.md-diff-body [data-diff="added"] {
+.md-diff-body [data-diff="added"]:not(tr):not(table) {
   background: var(--colorPaletteGreenBackground2);
   border-color: var(--colorPaletteGreenForeground2);
 }
-.md-diff-body [data-diff="removed"]::before,
-.md-diff-body [data-diff="added"]::before {
+.md-diff-body [data-diff="removed"]:not(tr):not(table)::before,
+.md-diff-body [data-diff="added"]:not(tr):not(table)::before {
   position: absolute;
   left: 0.5em;
   font-family: var(--fontFamilyMonospace);
   font-weight: 600;
 }
-.md-diff-body [data-diff="removed"]::before {
+.md-diff-body [data-diff="removed"]:not(tr):not(table)::before {
   content: "-";
 }
-.md-diff-body [data-diff="added"]::before {
+.md-diff-body [data-diff="added"]:not(tr):not(table)::before {
   content: "+";
 }
 .md-diff-body [data-diff="removed"] a {
@@ -205,16 +205,65 @@ body {
   text-decoration: none;
   cursor: default;
 }
+/* 表格行不能直接挂 ::before（Chromium 会把伪元素排成额外一列）：
+   背景铺各单元格，标记与左边框落到首格内部。整表增删则由
+   MarkdownDiffBody 的普通 div wrapper 承载上述通用块样式。 */
+.md-diff-body tr[data-diff="removed"] > * {
+  background: var(--colorPaletteRedBackground2);
+}
+.md-diff-body tr[data-diff="added"] > * {
+  background: var(--colorPaletteGreenBackground2);
+}
+.md-diff-body tr[data-diff] > :first-child {
+  position: relative;
+  padding-left: 1.6em;
+  border-left: 3px solid;
+}
+.md-diff-body tr[data-diff="removed"] > :first-child {
+  border-left-color: var(--colorPaletteRedForeground2);
+}
+.md-diff-body tr[data-diff="added"] > :first-child {
+  border-left-color: var(--colorPaletteGreenForeground2);
+}
+.md-diff-body tr[data-diff] > :first-child::before {
+  position: absolute;
+  left: 0.5em;
+  font-family: var(--fontFamilyMonospace);
+  font-weight: 600;
+}
+.md-diff-body tr[data-diff="removed"] > :first-child::before {
+  content: "-";
+}
+.md-diff-body tr[data-diff="added"] > :first-child::before {
+  content: "+";
+}
 /* 代码行：块级 span 逐行铺排（保持 pre 横向滚动），行标记同色系 */
 .md-diff-body pre .md-diff-line {
   display: block;
-}
-.md-diff-body pre [data-diff="removed"],
-.md-diff-body pre [data-diff="added"] {
+  position: relative;
+  min-height: 1.7em;
   padding-left: 1.4em;
+  border-left: 3px solid transparent;
+}
+.md-diff-body pre > code[data-diff] {
+  display: block;
+}
+.md-diff-body pre .md-diff-line[data-diff="removed"],
+.md-diff-body pre .md-diff-line[data-diff="added"] {
+  padding-left: 1.4em;
+  border-radius: 0;
+}
+.md-diff-body pre .md-diff-line[data-diff="removed"] {
+  border-left-color: var(--colorPaletteRedForeground2);
+}
+.md-diff-body pre .md-diff-line[data-diff="added"] {
+  border-left-color: var(--colorPaletteGreenForeground2);
 }
 .md-diff-body pre [data-diff="removed"]::before,
 .md-diff-body pre [data-diff="added"]::before {
   left: 0.15em;
+}
+.md-diff-body pre .md-diff-line[data-empty-line="true"]::after {
+  content: "\00a0";
 }
 

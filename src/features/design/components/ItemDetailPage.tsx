@@ -4,7 +4,7 @@
 // 与上一版的单栏 diff 由修订历史分区标题行的「与上一版对比」手动开关控制
 // （2026-09-03 同日第八次设计修订：废止自动 diff 与版本提示条 MessageBar；
 // 默认关显快照、开显 diff，当前版同样适用；回到当前 = 点时间线当前版）。
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Link as FluentLink, Title2, makeStyles, tokens } from "@fluentui/react-components";
@@ -21,6 +21,7 @@ import { RevisionDiffToggle } from "../../../components/RevisionDiffToggle";
 import { MetaChip } from "../../../components/MetaChip";
 import { PageFadeIn } from "../../../components/PageFadeIn";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
+import { findPreviousRevision } from "../../../components/findPreviousRevision";
 import { RelationsPanelSection } from "./RelationsPanelSection";
 import { ImpactPanelSection } from "./ImpactPanelSection";
 import { useImpactQuery, useItemDetailQuery, useItemRevisionsQuery, useRelationsQuery } from "../queries";
@@ -54,6 +55,21 @@ export function ItemDetailPage() {
   const [diffOn, setDiffOn] = useState(false);
   // 详情面板开合（壳层 CapsulePanel 受控；点外/Esc/收起按钮均回 false）
   const [panelOpen, setPanelOpen] = useState(false);
+  // React Router 在仅 :projectId/:code 改变时会复用同一页面实例；显式
+  // 清理实体级查看态，避免把 A 条目的历史版本/diff 带到 B 条目。
+  useEffect(() => {
+    setViewedRevision(null);
+    setDiffOn(false);
+    setPanelOpen(false);
+  }, [projectId, code]);
+  useEffect(() => {
+    if (viewedRevision == null || revisions.data === undefined) {
+      return;
+    }
+    if (!revisions.data.some((revision) => revision.revisionNo === viewedRevision)) {
+      setViewedRevision(null);
+    }
+  }, [viewedRevision, revisions.data]);
   // 修订按号排序（紧邻上一版据此取前一项，不假设编号连续）；
   // hooks 置于提前 return 之前（patterns.md「修订对比」）
   const sortedRevisions = useMemo(
@@ -77,18 +93,15 @@ export function ItemDetailPage() {
   }
 
   const item = detail.data;
-  const viewedIndex =
-    viewedRevision != null ? sortedRevisions.findIndex((r) => r.revisionNo === viewedRevision) : -1;
-  const viewed = viewedIndex >= 0 ? sortedRevisions[viewedIndex] : undefined;
+  const viewed =
+    viewedRevision != null
+      ? sortedRevisions.find((revision) => revision.revisionNo === viewedRevision)
+      : undefined;
   // diff 基准 = 紧邻上一版（不假设编号连续）：查看历史版取排序前一项；
-  // 查看当前版取最后一项的前一项（开关对当前版同样适用 = 最新修订与
-  // 上一版对比）；最旧版/仅 1 条修订无上一版 → 开关禁用
-  const beforeSnapshot =
-    viewedIndex > 0
-      ? sortedRevisions[viewedIndex - 1]
-      : viewedIndex === -1 && sortedRevisions.length >= 2
-        ? sortedRevisions[sortedRevisions.length - 2]
-        : undefined;
+  // 查看当前版按 currentRevision 找最大较小修订，不能假定修订列表最后
+  // 一项已与详情查询同步（否则正文先到 r4、列表仍 r1~r3 时会误取 r2）。
+  const targetRevisionNo = viewed?.revisionNo ?? item.currentRevision;
+  const beforeSnapshot = findPreviousRevision(sortedRevisions, targetRevisionNo);
   const bodyMd = viewed ? viewed.snapshot.bodyMd : item.bodyMd;
 
   return (
@@ -118,12 +131,16 @@ export function ItemDetailPage() {
             </>
           }
         >
-          <RevisionTimeline
-            entries={revisions.data ?? []}
-            currentRevisionNo={item.currentRevision}
-            viewedRevisionNo={viewedRevision}
-            onSelect={setViewedRevision}
-          />
+          {revisions.error ? (
+            <ErrorState error={revisions.error} onRetry={() => void revisions.refetch()} />
+          ) : (
+            <RevisionTimeline
+              entries={revisions.data ?? []}
+              currentRevisionNo={item.currentRevision}
+              viewedRevisionNo={viewedRevision}
+              onSelect={setViewedRevision}
+            />
+          )}
         </CapsulePanelSection>
         <CapsulePanelSection title={t("itemDetail.relations")}>
           <RelationsPanelSection projectId={projectId} relations={relations.data} />

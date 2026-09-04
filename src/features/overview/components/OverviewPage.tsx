@@ -7,7 +7,7 @@
 // 数据 get_project_overview / list_project_overview_revisions（INT-001
 // 白名单 15→16），Agent 经 MCP 维护，UI 只读渲染；文档内容不参与 i18n
 // （与条目正文同策略）。
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Title2, makeStyles, tokens } from "@fluentui/react-components";
@@ -23,6 +23,7 @@ import { RevisionDiffToggle } from "../../../components/RevisionDiffToggle";
 import { MetaChip } from "../../../components/MetaChip";
 import { PageFadeIn } from "../../../components/PageFadeIn";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
+import { findPreviousRevision } from "../../../components/findPreviousRevision";
 import { useProjectOverviewQuery, useProjectOverviewRevisionsQuery } from "../queries";
 
 const useStyles = makeStyles({
@@ -54,6 +55,21 @@ export function OverviewPage() {
   const [diffOn, setDiffOn] = useState(false);
   // 修订面板开合（壳层 CapsulePanel 受控；单分区面板，label 沿用「修订历史」）
   const [panelOpen, setPanelOpen] = useState(false);
+  // 同一路由元素切换 :projectId 时 React Router 会复用组件实例；项目级
+  // 查看态不可泄漏到下一个项目。
+  useEffect(() => {
+    setViewedRevision(null);
+    setDiffOn(false);
+    setPanelOpen(false);
+  }, [projectId]);
+  useEffect(() => {
+    if (viewedRevision == null || revisions.data === undefined) {
+      return;
+    }
+    if (!revisions.data.some((revision) => revision.revisionNo === viewedRevision)) {
+      setViewedRevision(null);
+    }
+  }, [viewedRevision, revisions.data]);
   // 修订按号排序（紧邻上一版据此取前一项，不假设编号连续）；
   // hooks 置于提前 return 之前（patterns.md「修订对比」）
   const sortedRevisions = useMemo(
@@ -77,25 +93,21 @@ export function OverviewPage() {
   }
 
   const data = doc.data;
-  const viewedIndex =
-    viewedRevision != null ? sortedRevisions.findIndex((r) => r.revisionNo === viewedRevision) : -1;
-  const viewed = viewedIndex >= 0 ? sortedRevisions[viewedIndex] : undefined;
+  const viewed =
+    viewedRevision != null
+      ? sortedRevisions.find((revision) => revision.revisionNo === viewedRevision)
+      : undefined;
   // diff 基准 = 紧邻上一版（不假设编号连续）：查看历史版取排序前一项；
-  // 查看当前版取最后一项的前一项（开关对当前版同样适用 = 最新修订与
-  // 上一版对比）；最旧版/仅 1 条修订无上一版 → 开关禁用
-  const beforeSnapshot =
-    viewedIndex > 0
-      ? sortedRevisions[viewedIndex - 1]
-      : viewedIndex === -1 && sortedRevisions.length >= 2
-        ? sortedRevisions[sortedRevisions.length - 2]
-        : undefined;
+  // 当前版按 revisionNo 找最大较小修订，兼容两条独立查询先后刷新。
+  const targetRevisionNo = viewed?.revisionNo ?? data.revisionNo;
+  const beforeSnapshot = findPreviousRevision(sortedRevisions, targetRevisionNo);
   const bodyMd = viewed ? viewed.snapshot.bodyMd : data.bodyMd;
 
   return (
     <article className={page}>
       {/* 修订历史浮动胶囊（2026-09-02 用户指令；2026-09-03 壳层上收共享
           CapsulePanel，概览为单分区面板）：sticky 右上、不占文档流
-          （BR-004 不可变追加，无 diff；patterns.md「浮动胶囊面板」） */}
+          （BR-004 不可变追加；patterns.md「浮动胶囊面板」） */}
       <CapsulePanel
         label={t("common.revisionHistory")}
         icon={<History16Regular />}
@@ -119,12 +131,16 @@ export function OverviewPage() {
             </>
           }
         >
-          <RevisionTimeline
-            entries={revisions.data ?? []}
-            currentRevisionNo={data.revisionNo}
-            viewedRevisionNo={viewedRevision}
-            onSelect={setViewedRevision}
-          />
+          {revisions.error ? (
+            <ErrorState error={revisions.error} onRetry={() => void revisions.refetch()} />
+          ) : (
+            <RevisionTimeline
+              entries={revisions.data ?? []}
+              currentRevisionNo={data.revisionNo}
+              viewedRevisionNo={viewedRevision}
+              onSelect={setViewedRevision}
+            />
+          )}
         </CapsulePanelSection>
       </CapsulePanel>
 
