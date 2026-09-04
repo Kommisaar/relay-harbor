@@ -6,12 +6,20 @@
 
 use std::sync::Arc;
 
-use crate::domain::ports::{Storage, StorageError};
+use crate::domain::ports::{SnapshotWriter, Storage, StorageError};
 use crate::infra::runtime::{init_logging, RuntimePaths};
 use crate::infra::storage::SqliteStorage;
+use crate::infra::writer::LocalSnapshotWriter;
+use crate::services::export::ExportService;
+use crate::services::read::ReadService;
 
 pub struct AppState {
+    /// 存储端口（superseded_by 编号解析等 DTO 组装直用）
     pub storage: Arc<dyn Storage>,
+    /// 读路径服务（ipc 与 http 共用）
+    pub read: ReadService,
+    /// 导出编排服务
+    pub export: ExportService,
     pub paths: RuntimePaths,
     /// NFR-007：非阻塞日志线程句柄，随 AppState 存活
     _log_guard: tracing_appender::non_blocking::WorkerGuard,
@@ -30,9 +38,12 @@ impl AppState {
     pub async fn init_with(paths: RuntimePaths) -> Result<Self, StorageError> {
         let log_guard = init_logging(&paths);
         tracing::info!(root = %paths.data_root.display(), "组合根装配");
-        let storage = SqliteStorage::open(&paths.db_path).await?;
+        let storage: Arc<dyn Storage> = Arc::new(SqliteStorage::open(&paths.db_path).await?);
+        let writer: Arc<dyn SnapshotWriter> = Arc::new(LocalSnapshotWriter::new());
         Ok(AppState {
-            storage: Arc::new(storage),
+            read: ReadService::new(storage.clone()),
+            export: ExportService::new(storage.clone(), writer),
+            storage,
             paths,
             _log_guard: log_guard,
         })

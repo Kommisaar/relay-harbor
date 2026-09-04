@@ -31,3 +31,13 @@ pub struct DataChangedEvent {
     /// 主条目编号（可空）
     pub code: Option<String>,
 }
+
+/// 导出进度（export_markdown 阶段推送；尽力送达， phase 与 mock 阶段名一致：
+/// reading / rendering / writing / done）
+#[derive(Serialize, Clone, tauri_specta::Event, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportProgressEvent {
+    pub project_id: String,
+    pub percent: u32,
+    pub phase: String,
+}

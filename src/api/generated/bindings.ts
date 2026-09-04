@@ -10,6 +10,130 @@ export const commands = {
  */
 async appVersion() : Promise<AppVersionResult> {
     return await TAURI_INVOKE("app_version");
+},
+async listProjects() : Promise<Result<ProjectSummaryDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_projects") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getProjectState(projectId: string) : Promise<Result<ProjectStateDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_project_state", { projectId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getProjectDoc(projectId: string, key: string) : Promise<Result<ProjectDocDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_project_doc", { projectId, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listProjectDocRevisions(projectId: string, key: string) : Promise<Result<ProjectDocRevisionDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_project_doc_revisions", { projectId, key }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listItems(projectId: string, filter: ItemListFilterDto | null) : Promise<Result<ItemSummaryDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_items", { projectId, filter }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getItemDetail(projectId: string, code: string) : Promise<Result<ItemDetailDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_item_detail", { projectId, code }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getItemRevisions(projectId: string, code: string) : Promise<Result<RevisionDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_item_revisions", { projectId, code }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getRelations(projectId: string, code: string) : Promise<Result<RelationEntryDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_relations", { projectId, code }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getTaskBoard(projectId: string) : Promise<Result<TaskBoardDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_task_board", { projectId }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async searchItems(projectId: string, q: string) : Promise<Result<SearchHitDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("search_items", { projectId, q }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getImpact(projectId: string, code: string) : Promise<Result<ImpactResultDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_impact", { projectId, code }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async listRecentRevisions(projectId: string, limit: number | null) : Promise<Result<RecentRevisionDto[], string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("list_recent_revisions", { projectId, limit }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+/**
+ * 导出（FR-014/UC-016/INT-006）：同步命令 + ExportProgressEvent 进度推送
+ * （偏差留痕见 services/export.rs 头注）。
+ */
+async exportMarkdown(projectId: string, options: ExportOptionsDto) : Promise<Result<ExportResultDto, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("export_markdown", { projectId, options }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async getSettings() : Promise<Result<AppSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("get_settings") };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
+},
+async setSettings(patch: SetSettingsPatchDto) : Promise<Result<AppSettings, string>> {
+    try {
+    return { status: "ok", data: await TAURI_INVOKE("set_settings", { patch }) };
+} catch (e) {
+    if(e instanceof Error) throw e;
+    else return { status: "error", error: e  as any };
+}
 }
 }
 
@@ -17,9 +141,11 @@ async appVersion() : Promise<AppVersionResult> {
 
 
 export const events = __makeEvents__<{
-dataChangedEvent: DataChangedEvent
+dataChangedEvent: DataChangedEvent,
+exportProgressEvent: ExportProgressEvent
 }>({
-dataChangedEvent: "data-changed-event"
+dataChangedEvent: "data-changed-event",
+exportProgressEvent: "export-progress-event"
 })
 
 /** user-defined constants **/
@@ -28,13 +154,26 @@ dataChangedEvent: "data-changed-event"
 
 /** user-defined types **/
 
+/**
+ * 应用设置（UI settings 页四项；非业务数据，不入 SQLite——CON-009 语义：
+ * settings 属应用配置，get/set_settings 是白名单内的非业务命令）。
+ * `#[serde(default)]` 字段缺省容忍：旧 settings.json 少字段回默认值（NFR-006）。
+ * specta::Type：settings 命令 DTO 直用（IPC 形态 = 存储形态，单一事实来源）。
+ */
+export type AppSettings = { theme: ThemeSetting; language: LanguageSetting; closeBehavior: CloseBehavior; lastLocation: string | null }
 export type AppVersionResult = { version: string }
+export type BlockedByDto = { code: string; title: string }
 export type ChangeKind = "item" | "relation" | "task" | "project" | 
 /**
  * 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）。
  * rename_all=lowercase 会产 "projectdoc"，契约线名带下划线，故显式 rename。
  */
 "project_doc"
+export type CloseBehavior = 
+/**
+ * 关窗最小化到托盘（FR-015，P6 落地）
+ */
+"tray" | "quit"
 /**
  * 失效信号（不承载数据）：projectId 定位失效粒度，前端按项目前缀失效查询。
  */
@@ -47,6 +186,120 @@ revision: number | null;
  * 主条目编号（可空）
  */
 code: string | null }
+export type DayCountDto = { 
+/**
+ * 本地日期口径见 services/read.rs（UTC 自然日聚合）
+ */
+date: string; count: number }
+export type DocSnapshotDto = { title: string; bodyMd: string }
+/**
+ * 导出参数（UI ExportOptions 拆平：scope 由门面折叠为 types；form 词表固定）
+ */
+export type ExportOptionsDto = { 
+/**
+ * scope 类型过滤；None = 全量（scope:"all"）
+ */
+types: ItemType[] | null; 
+/**
+ * "directory" | "zip"
+ */
+form: string; targetPath: string }
+/**
+ * 导出进度（export_markdown 阶段推送；尽力送达， phase 与 mock 阶段名一致：
+ * reading / rendering / writing / done）
+ */
+export type ExportProgressEvent = { projectId: string; percent: number; phase: string }
+export type ExportResultDto = { path: string; fileCount: number }
+export type ImpactEntryDto = { item: ItemSummaryDto; depth: number; via: RelationType }
+export type ImpactResultDto = { trigger: ItemSummaryDto; entries: ImpactEntryDto[] }
+export type ItemDetailDto = ({ projectId: string; code: string; itemType: ItemType; title: string; status: string; currentRevision: number; updatedAt: number; 
+/**
+ * 已替代时指向替代者编号（UI 契约为编号而非内部 id，此处解析）
+ */
+supersededBy: string | null }) & { bodyMd: string; metadata: Partial<{ [key in string]: string }>; createdAt: number }
+/**
+ * 条目列表过滤（types.ts ItemListFilter：type?/status?；status 允许 "all"）
+ */
+export type ItemListFilterDto = { type: string | null; status: string | null }
+export type ItemSummaryDto = { projectId: string; code: string; itemType: ItemType; title: string; status: string; currentRevision: number; updatedAt: number; 
+/**
+ * 已替代时指向替代者编号（UI 契约为编号而非内部 id，此处解析）
+ */
+supersededBy: string | null }
+/**
+ * 条目类型（15 种前缀，INV-008 创建后不可变；固定序 = 导出类型目录序与
+ * UI 侧栏分组序）。MOD 为 2026-09-04 修订循环新增（固定序 UI 之后、ADR 之前）。
+ * specta::Type：IPC DTO 直用领域枚举（单一事实来源，serde rename 即 TS 字面量联合）。
+ */
+export type ItemType = "FR" | "NFR" | "BR" | "CON" | "UC" | "DOM" | "CMP" | "INT" | "SEQ" | "UI" | "MOD" | "ADR" | "RISK" | "OQ" | "TASK"
+export type LanguageSetting = "system" | "zh" | "en"
+export type ProjectDocDto = { title: string; bodyMd: string; revisionNo: number; summary: string; changedAt: number }
+export type ProjectDocRevisionDto = { revisionNo: number; title: string; summary: string; changedAt: number; snapshot: DocSnapshotDto }
+export type ProjectStateDto = { 
+/**
+ * 键 = 类型前缀；仅出现过的类型（mock byType 口径）
+ */
+byType: Partial<{ [key in string]: number }>; 
+/**
+ * 键 = 条目状态蛇形名；全词表含零
+ */
+itemByStatus: Partial<{ [key in string]: number }>; 
+/**
+ * 键 = 任务状态蛇形名；全词表含零
+ */
+taskByStatus: Partial<{ [key in string]: number }>; revisionsByDay: DayCountDto[] }
+export type ProjectSummaryDto = { id: string; name: string; repoPath: string | null; itemCount: number; taskCount: number; updatedAt: number }
+export type RecentRevisionDto = { code: string; title: string; revisionNo: number; summary: string; changedAt: number }
+export type RelationEntryDto = { relationType: RelationType; 
+/**
+ * "in" | "out"
+ */
+direction: string; peer: ItemSummaryDto }
+/**
+ * 关系类型（五种；统一读作「A 对 B 做某事」，A 动者在前）
+ */
+export type RelationType = 
+/**
+ * A 派生自 B（B 是 A 的来源）
+ */
+"derives" | 
+/**
+ * A 依赖 B（B 未完成则 A 阻塞；主要用于任务间；有向无环，INV-002）
+ */
+"depends" | 
+/**
+ * A 满足 B（A 是 B 的落实）
+ */
+"satisfies" | 
+/**
+ * A 追踪到 B（松散溯源，不参与影响遍历）
+ */
+"traces" | 
+/**
+ * A 关联 B（无特定因果语义，不参与影响遍历）
+ */
+"relates"
+export type RevisionDto = { code: string; revisionNo: number; title: string; summary: string; changedAt: number; snapshot: RevisionSnapshotDto }
+export type RevisionSnapshotDto = { title: string; bodyMd: string; metadata: Partial<{ [key in string]: string }>; status: string }
+export type SearchHitDto = { item: ItemSummaryDto; 
+/**
+ * "code" | "title" | "body"
+ */
+matchedIn: string }
+/**
+ * 设置补丁（set_settings 合并语义）。last_location 单层 Option（留痕：
+ * 双层 Option 在 JSON 序列化下 null 不可区分「不提供/清除」，且 lastLocation
+ * 仅由应用导航写入恒为值，无清除场景）；null = 不变更。
+ */
+export type SetSettingsPatchDto = { theme: ThemeSetting | null; language: LanguageSetting | null; closeBehavior: CloseBehavior | null; lastLocation: string | null }
+export type TaskBoardColumnDto = { status: TaskStatus; tasks: TaskCardDto[] }
+export type TaskBoardDto = { columns: TaskBoardColumnDto[] }
+export type TaskCardDto = { code: string; title: string; status: string; updatedAt: number; blockedBy: BlockedByDto[] }
+/**
+ * 任务状态（DOM-006 状态机；任务无「已确认」态，BR-009 不适用）
+ */
+export type TaskStatus = "todo" | "doing" | "await_review" | "done" | "cancelled"
+export type ThemeSetting = "system" | "light" | "dark"
 
 /** tauri-specta globals **/
 

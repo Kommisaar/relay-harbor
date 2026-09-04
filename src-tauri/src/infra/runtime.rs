@@ -43,7 +43,10 @@ impl RuntimePaths {
 /// 应用设置（UI settings 页四项；非业务数据，不入 SQLite——CON-009 语义：
 /// settings 属应用配置，get/set_settings 是白名单内的非业务命令）。
 /// `#[serde(default)]` 字段缺省容忍：旧 settings.json 少字段回默认值（NFR-006）。
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+/// specta::Type：settings 命令 DTO 直用（IPC 形态 = 存储形态，单一事实来源）。
+#[derive(
+    Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AppSettings {
     pub theme: ThemeSetting,
@@ -63,7 +66,9 @@ impl Default for AppSettings {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum ThemeSetting {
     System,
@@ -71,7 +76,9 @@ pub enum ThemeSetting {
     Dark,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum LanguageSetting {
     System,
@@ -79,7 +86,9 @@ pub enum LanguageSetting {
     En,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "lowercase")]
 pub enum CloseBehavior {
     /// 关窗最小化到托盘（FR-015，P6 落地）

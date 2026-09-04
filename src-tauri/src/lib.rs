@@ -13,13 +13,39 @@ pub mod interfaces;
 pub mod services;
 pub mod state;
 
+/// AppState 经 lib 根再导出供 interfaces 命令以 `State<'_, AppState>` 注入
+///（ADR-006 组合根单向装配；check-rust-boundaries 的 crate::state 禁令针对
+/// 构造性依赖，注入型类型引用走此根导出）。
+pub use state::AppState;
+
+use tauri::Manager;
 use tauri_specta::{collect_commands, collect_events, Builder};
 
 /// specta 契约构建（CON-008）：命令与事件类型经此生成前端绑定。
 fn specta_builder() -> Builder<tauri::Wry> {
     Builder::<tauri::Wry>::new()
-        .commands(collect_commands![interfaces::ipc::app_version,])
-        .events(collect_events![interfaces::events::DataChangedEvent,])
+        .commands(collect_commands![
+            interfaces::ipc::app_version,
+            interfaces::ipc::list_projects,
+            interfaces::ipc::get_project_state,
+            interfaces::ipc::get_project_doc,
+            interfaces::ipc::list_project_doc_revisions,
+            interfaces::ipc::list_items,
+            interfaces::ipc::get_item_detail,
+            interfaces::ipc::get_item_revisions,
+            interfaces::ipc::get_relations,
+            interfaces::ipc::get_task_board,
+            interfaces::ipc::search_items,
+            interfaces::ipc::get_impact,
+            interfaces::ipc::list_recent_revisions,
+            interfaces::ipc::export_markdown,
+            interfaces::ipc::get_settings,
+            interfaces::ipc::set_settings,
+        ])
+        .events(collect_events![
+            interfaces::events::DataChangedEvent,
+            interfaces::events::ExportProgressEvent,
+        ])
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -35,6 +61,14 @@ pub fn run() {
 
     tauri::Builder::default()
         .invoke_handler(specta.invoke_handler())
+        .setup(|app| {
+            // 组合根装配（ADR-001）：数据库打开 + 迁移 + 日志初始化。
+            // 失败即 fail-fast（数据目录不可用属启动期硬错误）。
+            let state = tauri::async_runtime::block_on(state::AppState::init())
+                .expect("组合根装配失败");
+            app.manage(state);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("运行 RelayHarbor 失败");
 }

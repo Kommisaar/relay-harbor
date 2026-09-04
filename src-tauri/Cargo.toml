@@ -36,6 +36,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
 tracing = "0.1"
 tracing-appender = "0.2"          # NFR-007：~/.relayharbor/logs 按日轮转
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+zip = { version = "2", default-features = false, features = ["deflate"] } # 导出 zip 形态（UI-导出契约 form=zip；入口固定时间戳保证字节确定性）
 
 [dev-dependencies]
 tempfile = "3"                    # 存储集成测试的临时库文件

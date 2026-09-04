@@ -6,7 +6,9 @@ use std::fmt;
 use super::error::DomainError;
 
 /// 任务状态（DOM-006 状态机；任务无「已确认」态，BR-009 不适用）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskStatus {
     Todo,

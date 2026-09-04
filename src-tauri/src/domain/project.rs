@@ -21,7 +21,9 @@ pub struct Project {
 /// 项目级文档 key（DOM-009 受控词表，2026-09-04 修订循环）：
 /// overview / data_model / structure / tech_stack。
 /// 扩展 key 走设计修订，不允许项目自定义；词表外 key → ERR_VALIDATION。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectDocKey {
     Overview,

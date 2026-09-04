@@ -15,7 +15,10 @@ pub type ItemId = Uuid;
 
 /// 条目类型（15 种前缀，INV-008 创建后不可变；固定序 = 导出类型目录序与
 /// UI 侧栏分组序）。MOD 为 2026-09-04 修订循环新增（固定序 UI 之后、ADR 之前）。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+/// specta::Type：IPC DTO 直用领域枚举（单一事实来源，serde rename 即 TS 字面量联合）。
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 pub enum ItemType {
     #[serde(rename = "FR")]
     Fr,
@@ -107,7 +110,9 @@ impl fmt::Display for ItemType {
 }
 
 /// 非任务条目状态（三活态 + 三终态；2026-09-02 +已废弃终态）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum ItemStatus {
     Draft,
@@ -161,6 +166,7 @@ impl fmt::Display for ItemStatus {
 /// 条目当前状态值：按类型选定状态机（INV-005 两机互不混用）。
 /// 刻意不实现 Deserialize——"cancelled" 两机同名，反序列化无法判定归属，
 /// 入库文本一律经 [`status_from_storage`]（携带类型）解析。
+/// IPC DTO 层状态字段以 String 承载（specta 不适用 untagged 联合）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(untagged)]
 pub enum AnyStatus {
@@ -175,6 +181,14 @@ impl AnyStatus {
             AnyStatus::Item(st) => st.is_terminal(),
             AnyStatus::Task(st) => st.is_terminal(),
         }
+    }
+
+    /// 两机同名状态的文本解析入口（DTO 层用：先条目机后任务机，
+    /// "cancelled" 归条目机——与 storage 解析按类型分派不同，此处无类型上下文）
+    pub fn from_storage_text(s: &str) -> Option<Self> {
+        ItemStatus::parse(s)
+            .map(AnyStatus::Item)
+            .or_else(|| TaskStatus::parse(s).map(AnyStatus::Task))
     }
 }
 

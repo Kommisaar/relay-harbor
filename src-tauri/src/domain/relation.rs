@@ -15,7 +15,9 @@ use super::project::ProjectId;
 pub type RelationId = Uuid;
 
 /// 关系类型（五种；统一读作「A 对 B 做某事」，A 动者在前）
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize, specta::Type,
+)]
 #[serde(rename_all = "snake_case")]
 pub enum RelationType {
     /// A 派生自 B（B 是 A 的来源）

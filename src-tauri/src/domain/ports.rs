@@ -142,6 +142,18 @@ pub struct RecentRevision {
     pub changed_at: DateTime<Utc>,
 }
 
+/// 导出快照（单次取数时点固定，modules/export.md「一致性 = 导出开始时的库快照」）
+#[derive(Debug, Clone)]
+pub struct ExportSnapshot {
+    pub project: Project,
+    pub items: Vec<Item>,
+    /// 全部修订（快照导出取 title/summary/revision_no/changed_at）
+    pub revisions: Vec<Revision>,
+    pub relations: Vec<Relation>,
+    /// 项目级文档（facilitator 装配视图来源）
+    pub docs: Vec<ProjectDoc>,
+}
+
 /// 存储端口（对象安全：组合根 `Arc<dyn Storage>` 注入 Tauri 与 axum 双入口）
 #[async_trait]
 pub trait Storage: Send + Sync {
@@ -287,6 +299,12 @@ pub trait Storage: Send + Sync {
     /// 搜索（FR-012：M1 用 LIKE——编号精确/前缀 + 标题正文匹配；词法归实现）
     async fn search_items(&self, project_id: ProjectId, q: &str) -> StorageResult<Vec<Item>>;
 
+    /// 导出快照（单次取数；项目不存在 → None）
+    async fn export_snapshot(
+        &self,
+        project_id: ProjectId,
+    ) -> StorageResult<Option<ExportSnapshot>>;
+
     async fn get_project_doc(
         &self,
         project_id: ProjectId,
@@ -298,4 +316,35 @@ pub trait Storage: Send + Sync {
         project_id: ProjectId,
         doc_key: ProjectDocKey,
     ) -> StorageResult<Vec<ProjectDocRevision>>;
+}
+
+/// 导出文件（相对路径以 `/` 分隔；内容 UTF-8，由 domain/snapshot 产出）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SnapshotFile {
+    pub path: String,
+    pub content: String,
+}
+
+/// 导出写盘错误（modules/export.md：目标已存在拒绝；失败清理临时产物）
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SnapshotWriteError {
+    TargetExists,
+    Io(String),
+}
+
+/// 导出写盘端口（CMP-007，modules/services.md「导出写盘经端口化的
+/// SnapshotWriter」）：原子性策略（临时目录全部成功后 rename / zip 临时
+/// 文件 + rename）归实现；确定性内容（排序/格式）归 domain/snapshot。
+pub trait SnapshotWriter: Send + Sync {
+    fn write_directory(
+        &self,
+        target: &std::path::Path,
+        files: &[SnapshotFile],
+    ) -> Result<(), SnapshotWriteError>;
+
+    fn write_zip(
+        &self,
+        target: &std::path::Path,
+        files: &[SnapshotFile],
+    ) -> Result<(), SnapshotWriteError>;
 }

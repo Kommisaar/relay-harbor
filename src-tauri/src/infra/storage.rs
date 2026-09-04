@@ -1211,6 +1211,47 @@ impl Storage for SqliteStorage {
         .map_err(internal)?;
         rows.iter().map(map_doc_revision).collect()
     }
+
+    async fn export_snapshot(
+        &self,
+        project_id: ProjectId,
+    ) -> StorageResult<Option<crate::domain::ports::ExportSnapshot>> {
+        use crate::domain::ports::ExportSnapshot;
+        // 项目存在性（None → 上层 EXPORT 流程报 PROJECT_NOT_FOUND）
+        let Some(project) = self.get_project(project_id).await? else {
+            return Ok(None);
+        };
+        let items = self
+            .list_items(project_id, &ItemFilter::default())
+            .await?;
+        let mut revisions = Vec::new();
+        for item in &items {
+            revisions.extend(self.list_revisions(item.id).await?);
+        }
+        // 修订按 (条目编号, 序号) 排序——确定性聚合
+        revisions.sort_by(|a, b| {
+            let ca = items.iter().find(|i| i.id == a.item_id).map(|i| i.display_code.clone());
+            let cb = items.iter().find(|i| i.id == b.item_id).map(|i| i.display_code.clone());
+            (ca, a.revision_no).cmp(&(cb, b.revision_no))
+        });
+        let relations = self
+            .list_relations(project_id, &RelationFilter::default())
+            .await?;
+        // 文档按受控 key 遍历（DOM-009 词表；无文档 key 不入快照）
+        let mut docs = Vec::new();
+        for key in crate::domain::project::PROJECT_DOC_KEYS {
+            if let Some(doc) = self.get_project_doc(project_id, *key).await? {
+                docs.push(doc);
+            }
+        }
+        Ok(Some(ExportSnapshot {
+            project,
+            items,
+            revisions,
+            relations,
+            docs,
+        }))
+    }
 }
 
 /// WAL 备份原语（NFR-004）：VACUUM INTO 产出一致快照（含未 checkpoint 的 WAL 内容）。
