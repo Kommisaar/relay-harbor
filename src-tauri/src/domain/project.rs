@@ -14,6 +14,8 @@ pub struct Project {
     pub name: String,
     /// 关联仓库路径（仅登记，不识别内容），可空
     pub repo_path: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 /// 项目级文档 key（DOM-009 受控词表，2026-09-04 修订循环）：

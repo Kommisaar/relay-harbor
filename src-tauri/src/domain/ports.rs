@@ -21,11 +21,13 @@ use super::project::{Project, ProjectDoc, ProjectDocKey, ProjectId};
 use super::relation::{Relation, RelationId, RelationType};
 use super::revision::{ProjectDocRevision, Revision};
 
-/// 端口错误：领域拒绝（映射业务错误码）或存储内部故障
+/// 端口错误：领域拒绝（映射业务错误码）、查找未命中（services 映射
+/// ERR_NOT_FOUND——「检查标识，不重试」）或存储内部故障
 ///（services 包装为 ERR_INTERNAL，保留 cause 链供日志）
 #[derive(Debug, Clone)]
 pub enum StorageError {
     Domain(DomainError),
+    NotFound(String),
     Internal(String),
 }
 
@@ -39,6 +41,7 @@ impl std::fmt::Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::Domain(e) => write!(f, "{e}"),
+            StorageError::NotFound(msg) => write!(f, "未找到：{msg}"),
             StorageError::Internal(msg) => write!(f, "存储内部错误：{msg}"),
         }
     }

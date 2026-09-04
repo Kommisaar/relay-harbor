@@ -168,6 +168,16 @@ pub enum AnyStatus {
     Task(TaskStatus),
 }
 
+impl AnyStatus {
+    /// 终态判定（跨两机：三终态 / done+cancelled）
+    pub fn is_terminal(self) -> bool {
+        match self {
+            AnyStatus::Item(st) => st.is_terminal(),
+            AnyStatus::Task(st) => st.is_terminal(),
+        }
+    }
+}
+
 impl fmt::Display for AnyStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -361,6 +371,10 @@ pub struct Item {
     pub current_revision: u32,
     /// 已替代时指向替代者（INV-006：必填、同项目存在、替代者非终态）
     pub superseded_by: Option<ItemId>,
+    /// 创建时间（UTC；= 修订 1 的 changed_at）
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    /// 最后写入时间（UTC；= 最新修订 changed_at，UI 列表排序用）
+    pub updated_at: chrono::DateTime<chrono::Utc>,
 }
 
 impl Item {

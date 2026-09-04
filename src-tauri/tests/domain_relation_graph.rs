@@ -10,6 +10,7 @@ use relay_harbor_lib::domain::task::is_blocked;
 use relay_harbor_lib::domain::task::TaskStatus;
 
 fn item(project: ProjectId, code: &str) -> Item {
+    let now = chrono::Utc::now();
     Item {
         id: ItemId::new_v4(),
         project_id: project,
@@ -21,6 +22,8 @@ fn item(project: ProjectId, code: &str) -> Item {
         status: AnyStatus::Item(ItemStatus::Draft),
         current_revision: 1,
         superseded_by: None,
+        created_at: now,
+        updated_at: now,
     }
 }
 

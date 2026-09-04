@@ -30,6 +30,16 @@ tauri = { version = "2", features = [] }
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
 uuid = { version = "1", features = ["v4", "serde"] } # 内部主键（DOM-001/002，DB UUID 列）
 
+# infra 层（CMP-006/007，随 P2 引入）：SQLite 存储 + 运行时 + 结构化日志
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tracing = "0.1"
+tracing-appender = "0.2"          # NFR-007：~/.relayharbor/logs 按日轮转
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tempfile = "3"                    # 存储集成测试的临时库文件
+
 [profile.release]
 codegen-units = 1
 lto = true
