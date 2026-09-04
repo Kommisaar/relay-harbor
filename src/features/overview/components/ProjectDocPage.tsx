@@ -1,17 +1,22 @@
-// 项目概览页（UI-035，2026-09-02 用户指令新增，同日改版 article 文档形态）：
-// 每项目一篇可维护文档——头部（标题 + rN·操作者·相对时间）+ Markdown 正文
-// + 修订时间线版本切换（UI-017 同款共享件）；进入项目默认落地页。
+// 项目级文档页（UI-035，2026-09-02 用户指令新增，同日改版 article 文档形态；
+// 2026-09-04 修订循环 DOM-009 泛化 + 同日用户指令补浏览入口）：按受控 key
+// 渲染任意项目级文档——index（无 key 参数）= 概览实例，进入项目默认落地
+// 页；docs/:key 直达其余三篇（数据模型/项目结构/技术综述）。渲染机制四
+// key 同构：头部（标题 + 修订元信息 chips）+ Markdown 正文 + 修订时间线
+// 版本切换。
 // 与上一版的单栏 diff 由修订历史分区标题行的「与上一版对比」手动开关控制
 // （2026-09-03 同日第八次设计修订：废止自动 diff 与版本提示条 MessageBar；
 // 默认关显快照、开显 diff，当前版同样适用；回到当前 = 点时间线当前版）。
-// 数据 get_project_overview / list_project_overview_revisions（INT-001
-// 白名单 15→16），Agent 经 MCP 维护，UI 只读渲染；文档内容不参与 i18n
-// （与条目正文同策略）。
+// 数据 get_project_doc(key) / list_project_doc_revisions(key)（INT-001
+// 白名单 16 条），Agent 经 MCP 维护，UI 只读渲染；文档内容不参与 i18n
+// （与条目正文同策略）。词表外 key（伪造 URL）Navigate 回落概览（静态
+// 词表无 404 页）。
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Title2, makeStyles, tokens } from "@fluentui/react-components";
 import { ArrowExpand16Regular, History16Regular } from "@fluentui/react-icons";
+import { PROJECT_DOC_KEYS, type ProjectDocKey } from "../../../api/types";
 import { ErrorState } from "../../../components/ErrorState";
 import { SkeletonRows } from "../../../components/Skeletons";
 import { RelativeTime } from "../../../components/RelativeTime";
@@ -24,7 +29,7 @@ import { MetaChip } from "../../../components/MetaChip";
 import { PageFadeIn } from "../../../components/PageFadeIn";
 import { usePageContainerStyles } from "../../../components/usePageContainerStyles";
 import { findPreviousRevision } from "../../../components/findPreviousRevision";
-import { useProjectOverviewQuery, useProjectOverviewRevisionsQuery } from "../queries";
+import { useProjectDocQuery, useProjectDocRevisionsQuery } from "../queries";
 
 const useStyles = makeStyles({
   header: { display: "flex", flexDirection: "column", gap: tokens.spacingVerticalXS, marginBottom: tokens.spacingVerticalL },
@@ -38,16 +43,21 @@ const useStyles = makeStyles({
   },
 });
 
-export function OverviewPage() {
+export function ProjectDocPage() {
   const styles = useStyles();
   // 页面容器：workbench 族，内容宽上限 1080（patterns.md「页面容器与标题对齐」；
   // article 形态与条目详情页同口径）。承载 fixed 胶囊 → 容器不参与渐入
   // 动画（enter=false），内容层 PageFadeIn 包裹（patterns.md「页面内容渐入」）
   const page = usePageContainerStyles("workbench", false);
   const { t } = useTranslation();
-  const { projectId = "" } = useParams();
-  const doc = useProjectOverviewQuery(projectId);
-  const revisions = useProjectOverviewRevisionsQuery(projectId);
+  const { projectId = "", key: keyParam } = useParams();
+  // 受控词表校验（DOM-009）：词表内 key 直达；词表外 key 重定向回落概览。
+  // 校验判定放在全部 hooks 之后（hooks 以兜底 overview 取数，同项目缓存
+  // 去重、重定向即弃，无害）
+  const keyValid = keyParam !== undefined && (PROJECT_DOC_KEYS as readonly string[]).includes(keyParam);
+  const docKey: ProjectDocKey = keyValid ? (keyParam as ProjectDocKey) : "overview";
+  const doc = useProjectDocQuery(projectId, docKey);
+  const revisions = useProjectDocRevisionsQuery(projectId, docKey);
   /** null = 当前版本；数字 = 查看该历史版本快照（UI-017 同款，本地 state 不入 URL） */
   const [viewedRevision, setViewedRevision] = useState<number | null>(null);
   // 修订对比开关（patterns.md「修订对比」，2026-09-03 手动开关口径）：
@@ -55,13 +65,13 @@ export function OverviewPage() {
   const [diffOn, setDiffOn] = useState(false);
   // 修订面板开合（壳层 CapsulePanel 受控；单分区面板，label 沿用「修订历史」）
   const [panelOpen, setPanelOpen] = useState(false);
-  // 同一路由元素切换 :projectId 时 React Router 会复用组件实例；项目级
-  // 查看态不可泄漏到下一个项目。
+  // 同一路由元素切换 :projectId / :key 时 React Router 会复用组件实例；
+  // 项目级查看态不可泄漏到下一个项目或下一篇文档。
   useEffect(() => {
     setViewedRevision(null);
     setDiffOn(false);
     setPanelOpen(false);
-  }, [projectId]);
+  }, [projectId, docKey]);
   useEffect(() => {
     if (viewedRevision == null || revisions.data === undefined) {
       return;
@@ -77,6 +87,9 @@ export function OverviewPage() {
     [revisions.data],
   );
 
+  if (keyParam !== undefined && !keyValid) {
+    return <Navigate to={`/projects/${projectId}`} replace />;
+  }
   if (doc.isPending) {
     return (
       <div className={page}>
@@ -112,7 +125,7 @@ export function OverviewPage() {
         label={t("common.revisionHistory")}
         icon={<History16Regular />}
         expandIcon={<ArrowExpand16Regular />}
-        badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
+        badge={viewedRevision != null ? `v${viewedRevision}` : (revisions.data?.length ?? 0)}
         active={viewedRevision != null}
         open={panelOpen}
         onOpenChange={setPanelOpen}
@@ -147,8 +160,9 @@ export function OverviewPage() {
       {/* 内容层分块错落渐入（patterns.md「页面内容渐入」三改）：
           头部层 0ms 先入、正文层 +80ms 随后；胶囊在外不入动画 */}
       <PageFadeIn>
-        {/* 头部：文档标题 + 修订元信息双 chip（形态对齐条目详情 UI-016；
-            actor 元信息 2026-09-03 用户指令随修订模型移除） */}
+        {/* 头部：文档标题（数据字段，各 key 文档自带）+ 修订元信息双 chip
+            （形态对齐条目详情 UI-016；actor 元信息 2026-09-03 用户指令随
+            修订模型移除） */}
         <header className={styles.header}>
           <div className={styles.titleRow}>
             <Title2>{data.title}</Title2>

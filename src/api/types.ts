@@ -2,8 +2,9 @@
 // 实现期注记（2026-08-28）：tauri-specta generated 尚未包含这批命令（后端联调暂缓），
 // 类型暂由本文件承载；联调时以 generated 产物为准替换，feature 层不感知。
 
-/** 条目类型前缀（14 种，与类型一一绑定，INV-008）。UI 为 2026-09-01
-    用户指令升格（沿用 UI-xxx 索引体系，见 05-detailed-design/ui/README.md） */
+/** 条目类型前缀（15 种，与类型一一绑定，INV-008）。UI 为 2026-09-01
+    用户指令升格（沿用 UI-xxx 索引体系，见 05-detailed-design/ui/README.md）；
+    MOD 为 2026-09-04 修订循环新增（模块设计，固定序 UI 之后，DOM-002 留痕） */
 export const ITEM_TYPES = [
   "FR",
   "NFR",
@@ -15,12 +16,18 @@ export const ITEM_TYPES = [
   "INT",
   "SEQ",
   "UI",
+  "MOD",
   "ADR",
   "RISK",
   "OQ",
   "TASK",
 ] as const;
 export type ItemType = (typeof ITEM_TYPES)[number];
+
+/** 项目级文档 key（DOM-009，2026-09-04：受控词表，扩展走设计修订，
+    不允许项目自定义） */
+export const PROJECT_DOC_KEYS = ["overview", "data_model", "structure", "tech_stack"] as const;
+export type ProjectDocKey = (typeof PROJECT_DOC_KEYS)[number];
 
 /** 非任务条目状态机（03 领域模型：三活态 + 三终态） */
 export const ITEM_STATUSES = ["draft", "in_review", "confirmed", "cancelled", "superseded", "deprecated"] as const;
@@ -132,11 +139,11 @@ export interface RecentRevision {
   changedAt: number;
 }
 
-/** 项目概览文档（get_project_overview，UI-035，2026-09-02 新增，同日
-    改版 article 文档形态）：每项目一篇可维护 Markdown 文档，Agent 经
-    MCP 修订、UI 只读渲染，内容为项目数据不参与 i18n。返回当前版正文
-    与头部元信息（一次取齐） */
-export interface ProjectOverviewDoc {
+/** 项目级文档（get_project_doc(key)，DOM-009；由 get_project_overview
+    泛化改名 2026-09-04，UI-035 概览为 key=overview 实例）：每项目每 key
+    一篇可维护 Markdown 文档，Agent 经 MCP 修订、UI 只读渲染，内容为
+    项目数据不参与 i18n。返回当前版正文与头部元信息（一次取齐） */
+export interface ProjectDoc {
   title: string;
   bodyMd: string;
   revisionNo: number;
@@ -144,10 +151,10 @@ export interface ProjectOverviewDoc {
   changedAt: number;
 }
 
-/** 项目概览修订（list_project_overview_revisions，BR-004 不可变追加）。
+/** 项目级文档修订（list_project_doc_revisions，BR-004 不可变追加）。
     快照含标题/正文，版本切换不另发命令（同 get_item_revisions
-    一次取齐策略）；概览非条目——无类型/状态/元数据字段 */
-export interface OverviewRevision {
+    一次取齐策略）；文档非条目——无类型/状态/元数据字段 */
+export interface ProjectDocRevision {
   revisionNo: number;
   /** 修订标题（2026-09-03 用户指令替代 actor） */
   title: string;

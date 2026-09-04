@@ -1,7 +1,9 @@
 # 项目概览页
 
 > 状态：待确认
-> 路由：`/projects/:id/`（index，进入项目默认落地页）
+> 路由：`/projects/:id/`（index=概览实例 key=overview，进入项目默认
+> 落地页）；`/projects/:id/docs/:key`（其余三个受控 key，2026-09-04
+> 同日用户指令补入口）
 > 关联：UI-035、FR-008、UC-010、CMP-001
 > 沿革：2026-09-02 用户指令新增，同日两改——初版为结构化五卡
 > （get_project_overview 返回 positioning/problems/directions/scope/
@@ -13,7 +15,12 @@
 
 项目概览是每项目一篇的**可维护文档**（对标 dev-toolkit facilitator
 设计文档体系 00 项目概览 README）：Agent 经 MCP 持续修订，UI 只读
-渲染。正文为 Markdown；修订不可变追加（BR-004），历史版本可切换
+渲染。**2026-09-04 同日用户指令补入口**：本页按 DOM-009 受控 key 泛化
+为项目级文档通用页——概览（overview）为 index 默认实例，数据模型
+（data_model）/项目结构（structure）/技术综述（tech_stack）经子导航
+直达（三链接直接跟在项目统计之后、不单独成组——2026-09-04 同日
+用户二次指令），四 key 渲染机制完全同构（下文以概览为主语叙述）。
+正文为 Markdown；修订不可变追加（BR-004），历史版本可切换
 查看。文档内容为项目数据，不参与 i18n（与条目正文同策略），语言
 切换只影响界面文案。
 
@@ -23,7 +30,7 @@
 见 patterns.md「页面容器与标题对齐」）：
 
 1. **头部**：文档标题（Title2，数据字段）+ 修订元信息两枚 chip
-   （2026-09-04 二改：版本身份「当前版本 rN」/「旧修订版本 rN」随
+   （2026-09-04 二改：版本身份「当前版本 vN」/「旧修订版本 vN」随
    查看态切换 + 相对时间随查看版；共享 MetaChip，与条目详情统一，
    见 patterns.md「头部元信息 chip」；当前版元信息随正文一次取齐；
    actor 元信息 2026-09-03 用户指令随修订模型移除）；
@@ -48,14 +55,14 @@
    样式）；开关开显示与紧邻上一版的单栏 diff（共享 MarkdownDiffBody，
    patterns.md「修订对比」），关/无上一版显示快照正文，头部元信息
    不变。原版本提示条 MessageBar 废除（2026-09-03 同日三改用户指令）：
-   查看状态由时间线选中圆点 + 胶囊 rN 徽标自明，回到当前 = 点时间线
+   查看状态由时间线选中圆点 + 胶囊 vN 徽标自明，回到当前 = 点时间线
    当前版。
 
 ```text
 项目概览 · relay-harbor
 ┌───────────────────────────┐
 │ 项目概览（Title2）  (⏱修订历史·3)│
-│ [当前版本 r3] [2h]  ← 修订元信息 chip │
+│ [当前版本 v3] [2h]  ← 修订元信息 chip │
 ├───────────────────────────┤
 │ （Markdown 正文）          │
 │ ## 项目目标 …              │
@@ -66,13 +73,15 @@
 
 ## 数据
 
-- `get_project_overview`（project_id → 当前文档：title、body_md、
-  revision_no、summary、changed_at；actor 2026-09-03 移除）→
-  `["projects", id, "overview"]`；
-- `list_project_overview_revisions`（**新增命令**，INT-001 白名单
-  15→16）：project_id → 修订列表倒序、含快照正文（title、body_md，
-  同 get_item_revisions 一次取齐策略——单文档量小，免第三次命令）→
-  `["projects", id, "overview-revisions"]`。
+- `get_project_doc`（project_id, key=路由派生受控 key → 当前文档：
+  title、body_md、revision_no、summary、changed_at；2026-09-04 修订
+  循环由 `get_project_overview` 泛化改名，DOM-009）→
+  `["projects", id, "doc", key]`；
+- `list_project_doc_revisions`（2026-09-04 由
+  `list_project_overview_revisions` 泛化改名，白名单总数 16 不变）：
+  project_id, key → 修订列表倒序、含快照正文（title、
+  body_md，同 get_item_revisions 一次取齐策略——单文档量小，免第三次
+  命令）→ `["projects", id, "doc-revisions", key]`。
 
 ## 交互
 
@@ -82,6 +91,10 @@
 ## 状态与边界
 
 - 加载骨架屏；查询失败错误态 + 重试；
+- 受控 key 无文档（如项目仅维护 overview）→ DOC_NOT_FOUND 错误态 +
+  重试（i18n errors.DOC_NOT_FOUND，2026-09-04 同日入口补齐新增）；
+- 词表外 key（伪造 URL）前端校验后 Navigate 回落概览 index（静态
+  词表，无 404 页）；
 - 修订仅 1 条：胶囊照常呈现（UI-031 同策略，不隐藏入口）；
 - data-changed 失效刷新（ADR-006），query key 前缀
   `["projects", id, ...]`。
@@ -93,4 +106,6 @@
 最新修订与上一版对比（patterns.md「修订对比」）、diffOn 跨修订切换
 保持；面板选中后收起、回到当前 = 点时间线当前版；滚动时胶囊保持最小
 距离钉在固定高度；
-修订倒序呈现；语言切换只影响界面文案不改变正文。
+修订倒序呈现；语言切换只影响界面文案不改变正文；`docs/:key` 三键直达
+渲染、无文档 key 呈 DOC_NOT_FOUND 错误态、词表外 key 回落概览、跨 key
+切换时查看态（版本/对比开关/面板）重置（2026-09-04 同日入口补齐）。

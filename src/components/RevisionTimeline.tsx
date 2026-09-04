@@ -10,7 +10,7 @@ import { Radio, RadioGroup, Text, makeStyles, mergeClasses, tokens } from "@flue
 import { useTranslation } from "react-i18next";
 import { RelativeTime } from "./RelativeTime";
 
-/** 时间线条目最小形态（Revision / OverviewRevision 结构均满足）。
+/** 时间线条目最小形态（Revision / ProjectDocRevision 结构均满足）。
     title 为修订标题（2026-09-03 用户指令替代 actor，操作者审计在操作日志） */
 export interface RevisionTimelineEntry {
   revisionNo: number;
@@ -138,7 +138,7 @@ export function RevisionTimeline({ entries, currentRevisionNo, viewedRevisionNo,
               className={mergeClasses(styles.radio, RADIO_HOOK_CLASS)}
               label={
                 <span className={styles.rowContent}>
-                  <span className={styles.mono}>r{revision.revisionNo}</span>
+                  <span className={styles.mono}>v{revision.revisionNo}</span>
                   <span className={styles.rowMain}>
                     <Text size={300}>{revision.title}</Text>
                     {revision.summary ? <span className={styles.muted}>{revision.summary}</span> : null}

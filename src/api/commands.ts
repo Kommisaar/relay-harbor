@@ -5,8 +5,8 @@
 export {
   listProjects,
   getProjectState,
-  getProjectOverview,
-  listProjectOverviewRevisions,
+  getProjectDoc,
+  listProjectDocRevisions,
   listItems,
   getItemDetail,
   getItemRevisions,

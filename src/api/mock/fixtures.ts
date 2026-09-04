@@ -6,8 +6,9 @@ import type {
   AnyStatus,
   ItemType,
   ItemDetail,
-  OverviewRevision,
-  ProjectOverviewDoc,
+  ProjectDoc,
+  ProjectDocKey,
+  ProjectDocRevision,
   ProjectSummary,
   RelationType,
   Revision,
@@ -24,8 +25,9 @@ export interface MockProject {
   items: ItemDetail[];
   relations: { source: string; target: string; type: RelationType }[];
   revisions: Revision[];
-  overview: ProjectOverviewDoc;
-  overviewRevisions: OverviewRevision[];
+  /** 项目级文档（DOM-009）：按受控 key 挂接，未维护的 key 缺省（DOC_NOT_FOUND 样本） */
+  docs: Partial<Record<ProjectDocKey, ProjectDoc>>;
+  docRevisions: Partial<Record<ProjectDocKey, ProjectDocRevision[]>>;
 }
 
 interface ItemSpec {
@@ -141,6 +143,7 @@ const relayItems: ItemSpec[] = [
   { code: "DOM-003", title: "关系（有向语义链接）", revision: 1, updated: daysAgo(9) },
   { code: "DOM-006", title: "任务（TASK 条目）", revision: 1, updated: daysAgo(9) },
   { code: "DOM-008", title: "显示编号（前缀-序号）", revision: 1, updated: daysAgo(9) },
+  { code: "DOM-009", title: "项目级文档（受控 key）", status: "in_review", revision: 1, updated: hoursAgo(20) },
 
   // CMP / INT / SEQ
   { code: "CMP-001", title: "前端应用（WebView）", revision: 2, updated: daysAgo(1) },
@@ -179,6 +182,56 @@ const relayItems: ItemSpec[] = [
   { code: "UI-033", title: "全部项目导出页（已移除）", status: "cancelled", revision: 1, updated: daysAgo(6) },
   { code: "UI-034", title: "设计文档浏览页", status: "draft", revision: 1, updated: minutesAgo(8) },
 
+  // MOD（模块设计，2026-09-04 修订循环升格第 15 类型：模块职责/对外接口/内部结构）
+  {
+    code: "MOD-001",
+    title: "模块设计：MCP 工具集与写入门面",
+    status: "in_review",
+    revision: 2,
+    updated: daysAgo(2),
+    body: [
+      "## 模块职责",
+      "",
+      "MCP 工具集是 Agent 写入的唯一业务入口（CON-009）：工具参数经校验后转入领域服务，以 ChangeSet 单事务落库（ADR-002）。",
+      "",
+      "## 对外接口",
+      "",
+      "| 工具 | 读/写 | 说明 |",
+      "| --- | --- | --- |",
+      "| get_item | 读 | 按编号取条目当前修订 |",
+      "| create_item / update_item | 写 | 创建与编辑，产生不可变修订（BR-004） |",
+      "| set_project_doc | 写 | 维护项目级文档（DOM-009 / FR-019） |",
+      "",
+      "## 内部结构",
+      "",
+      "- 工具路由：参数解析与错误短码映射",
+      "- 校验器：编号唯一、状态迁移、引用存在性（BR-001 / BR-005）",
+      "- 事务装配：ChangeSet 收集与提交",
+    ].join("\n"),
+  },
+  {
+    code: "MOD-002",
+    title: "模块设计：确定性导出器",
+    revision: 1,
+    updated: daysAgo(3),
+    body: [
+      "## 模块职责",
+      "",
+      "把项目内条目渲染为确定性 Markdown 文档集（FR-014）：同一数据库状态导出结果逐字节一致，便于 Git 审查。",
+      "",
+      "## 对外接口",
+      "",
+      "- `export_markdown(project_id, options)`：目录 / zip 两种形态，进度经事件上报（INT-006）",
+      "",
+      "## 内部结构",
+      "",
+      "- 装配视图：类型 → 文件布局（含 facilitator 装配视图，INT-006）",
+      "- 渲染器：条目正文 + 元信息头 + 修订尾注",
+      "- 写出器：临时目录 → 原子改名，目标已存在即拒绝覆盖",
+    ].join("\n"),
+  },
+  { code: "MOD-003", title: "模块设计：条目浏览与详情模块", status: "draft", revision: 1, updated: daysAgo(1) },
+
   // ADR / RISK / OQ
   { code: "ADR-002", title: "意图级存储端口 + ChangeSet 单事务", revision: 2, updated: daysAgo(3) },
   { code: "ADR-006", title: "IPC 只读通道与事件失效", revision: 1, updated: daysAgo(4) },
@@ -190,7 +243,8 @@ const relayItems: ItemSpec[] = [
   // TASK（任务状态机）
   { code: "TASK-001", title: "搭建 Tauri 脚手架与 CI 三件套", status: "done", revision: 3, updated: daysAgo(2) },
   { code: "TASK-002", title: "实现 SQLite 存储与迁移", status: "done", revision: 2, updated: daysAgo(1) },
-  { code: "TASK-003", title: "实现 MCP 工具集 12 个", status: "doing", revision: 2, updated: hoursAgo(2), metadata: { priority: "P0" } },
+  // 工具数随 2026-09-04 修订循环 12→14（+get_project_doc / set_project_doc）
+  { code: "TASK-003", title: "实现 MCP 工具集 14 个", status: "doing", revision: 2, updated: hoursAgo(2), metadata: { priority: "P0" } },
   { code: "TASK-004", title: "实现 IPC 只读命令面", status: "await_review", revision: 1, updated: hoursAgo(6) },
   { code: "TASK-005", title: "本地 HTTP API 鉴权与握手", status: "doing", revision: 2, updated: hoursAgo(3) },
   { code: "TASK-006", title: "关系图可视化（M2 预研）", status: "cancelled", revision: 1, updated: daysAgo(4) },
@@ -234,6 +288,10 @@ const relayRelations: MockProject["relations"] = [
   { source: "UI-019", target: "FR-011", type: "derives" },
   { source: "UI-023", target: "FR-014", type: "derives" },
   { source: "UI-034", target: "FR-009", type: "relates" },
+  // MOD 模块设计派生自所属组件（2026-09-04 第 15 类型样本）
+  { source: "MOD-001", target: "CMP-003", type: "derives" },
+  { source: "MOD-002", target: "CMP-007", type: "derives" },
+  { source: "MOD-003", target: "CMP-001", type: "derives" },
 ];
 
 function snapshotOf(item: ItemDetail, statusOverride?: AnyStatus, bodyMd?: string): Revision["snapshot"] {
@@ -305,14 +363,45 @@ function revisionsFor(projectId: string, items: ItemDetail[]): Revision[] {
   return out.sort((a, b) => b.changedAt - a.changedAt);
 }
 
-function overviewRevision(
+function docRevision(
   no: number,
   title: string,
   summary: string,
   changedAt: number,
-  doc: ProjectOverviewDoc,
-): OverviewRevision {
+  doc: ProjectDoc,
+): ProjectDocRevision {
   return { revisionNo: no, title, summary, changedAt, snapshot: { title: doc.title, bodyMd: doc.bodyMd } };
+}
+
+/** 项目级文档构建规格：bodies / revTitles / summaries / changedAt 按修订序号
+    1..n 对齐，末位即当前版（DOM-009） */
+interface DocSpec {
+  key: ProjectDocKey;
+  title: string;
+  bodies: string[];
+  revTitles: string[];
+  summaries: string[];
+  changedAt: number[];
+}
+
+function buildDocs(specs: DocSpec[]): Pick<MockProject, "docs" | "docRevisions"> {
+  const docs: MockProject["docs"] = {};
+  const docRevisions: MockProject["docRevisions"] = {};
+  for (const spec of specs) {
+    const latest = spec.bodies.length;
+    const doc: ProjectDoc = {
+      title: spec.title,
+      bodyMd: spec.bodies[latest - 1] ?? "",
+      revisionNo: latest,
+      summary: spec.summaries[latest - 1] ?? "",
+      changedAt: spec.changedAt[latest - 1] ?? 0,
+    };
+    docs[spec.key] = doc;
+    docRevisions[spec.key] = spec.bodies.map((bodyMd, i) =>
+      docRevision(i + 1, spec.revTitles[i] ?? "", spec.summaries[i] ?? "", spec.changedAt[i] ?? 0, { ...doc, bodyMd }),
+    );
+  }
+  return { docs, docRevisions };
 }
 
 const relayProject: MockProject = (() => {
@@ -326,9 +415,10 @@ const relayProject: MockProject = (() => {
     taskCount,
     updatedAt: Math.max(...items.map((i) => i.updatedAt)),
   };
-  // 项目概览文档（get_project_overview，UI-035，article 形态）：内容浓缩自
-  // 本项目 docs/design/00-overview/README.md（已确认基线），Agent 经 MCP
-  // 随基线演进维护；各版正文有实质差异，支撑版本切换走查
+  // 项目级文档（get_project_doc(key)，DOM-009）：overview 浓缩自本项目
+  // docs/design/00-overview/README.md（已确认基线），Agent 经 MCP 随基线演进
+  // 维护；data_model / structure / tech_stack 为 2026-09-04 泛化新增样本。
+  // 各版正文有实质差异，支撑版本切换走查
   const r1Body = [
     "## 定位",
     "",
@@ -434,19 +524,93 @@ const relayProject: MockProject = (() => {
     "// 本地受控 API：回环 + 令牌（CON-006）",
     "```",
   ].join("\n");
-  const overview: ProjectOverviewDoc = {
-    title: "RelayHarbor 项目概览",
-    bodyMd: r3Body,
-    revisionNo: 3,
-    summary: "方向标注设计编号，补成功标准与主要风险",
-    changedAt: hoursAgo(30),
+  const dataModelR1 = [
+    "## 概念总览",
+    "",
+    "- 项目（project）：设计资产的顶层容器，绑定仓库路径",
+    "- 条目（item）：15 种类型前缀的设计资产对象（DOM-002）",
+    "- 修订（revision）：不可变追加的版本快照（BR-004）",
+    "- 关系（relation）：derives / satisfies / depends / traces / relates 五类有向语义链接（DOM-003）",
+    "- 任务（task）：五态状态机的 TASK 条目（DOM-006）",
+    "",
+    "## 编号与关系",
+    "",
+    "显示编号为「前缀-序号」（DOM-008），项目内唯一且永不复用（BR-001）；关系动者在前（A derives B：A 派生自 B）。",
+  ].join("\n");
+  const dataModelR2 = [
+    dataModelR1,
+    "",
+    "## 项目级文档（DOM-009）",
+    "",
+    "project_docs 以受控 key（overview / data_model / structure / tech_stack）挂接项目级综述，独立于条目修订流；",
+    "project_doc_revisions 同样不可变追加，Agent 经 MCP 工具 set_project_doc 修订（FR-019）。",
+  ].join("\n");
+  const structureBody = [
+    "## 目录结构",
+    "",
+    "- `src/`：React 前端，app / features / components / api 分层，依赖单向",
+    "- `src-tauri/`：Rust 壳与领域服务，interfaces → services → domain ← infra",
+    "- `docs/design/`：设计文档基线（00 概览 → 06 验证）",
+    "- `config/`：依赖白名单与 IPC 命令白名单等机器强制配置",
+    "",
+    "## 分层边界",
+    "",
+    "- 前端依赖单向 app → features → components/shared/api，feature 之间禁止互引；",
+    "- invoke 只允许出现在 `src/api`，业务写前缀命令禁止（CON-009）。",
+  ].join("\n");
+  const techStackBody = [
+    "## 技术选型",
+    "",
+    "- 桌面壳：Tauri 2（WebView 复用系统能力）",
+    "- 前端：React 19 + Fluent UI v9（Griffel 样式）+ Vite 6 + TypeScript strict",
+    "- 存储：SQLite（唯一运行时事实来源，OQ-001）",
+    "- 图表：@ant-design/charts（classic / classicDark 随主题切换）",
+    "",
+    "## 决策留痕",
+    "",
+    "技术决策一律先落 ADR 条目（ADR-002 / ADR-006 / ADR-007），本综述只做现状汇总，不承载决策过程。",
+  ].join("\n");
+  const docData = buildDocs([
+    {
+      key: "overview",
+      title: "RelayHarbor 项目概览",
+      bodies: [r1Body, r2Body, r3Body],
+      revTitles: ["创建项目概览", "补充方向与里程碑范围", "同步 00 基线"],
+      summaries: ["定位与重点问题", "", "方向标注设计编号，补成功标准与主要风险"],
+      changedAt: [daysAgo(12), daysAgo(5), hoursAgo(30)],
+    },
+    {
+      key: "data_model",
+      title: "RelayHarbor 数据模型综述",
+      bodies: [dataModelR1, dataModelR2],
+      revTitles: ["创建数据模型综述", "补充项目级文档概念"],
+      summaries: ["五大概念与编号规则", "DOM-009 项目级文档"],
+      changedAt: [daysAgo(4), hoursAgo(20)],
+    },
+    {
+      key: "structure",
+      title: "RelayHarbor 项目结构综述",
+      bodies: [structureBody],
+      revTitles: ["创建项目结构综述"],
+      summaries: ["目录分层与边界规则"],
+      changedAt: [daysAgo(2)],
+    },
+    {
+      key: "tech_stack",
+      title: "RelayHarbor 技术综述",
+      bodies: [techStackBody],
+      revTitles: ["创建技术综述"],
+      summaries: ["选型现状与决策留痕约定"],
+      changedAt: [daysAgo(2)],
+    },
+  ]);
+  return {
+    summary,
+    items,
+    relations: relayRelations,
+    revisions: revisionsFor("p-relay", items),
+    ...docData,
   };
-  const overviewRevisions: OverviewRevision[] = [
-    overviewRevision(3, "同步 00 基线", overview.summary, overview.changedAt, { ...overview, bodyMd: r3Body }),
-    overviewRevision(2, "补充方向与里程碑范围", "", daysAgo(5), { ...overview, bodyMd: r2Body }),
-    overviewRevision(1, "创建项目概览", "定位与重点问题", daysAgo(12), { ...overview, bodyMd: r1Body }),
-  ];
-  return { summary, items, relations: relayRelations, revisions: revisionsFor("p-relay", items), overview, overviewRevisions };
 })();
 
 const zhsppyItems: ItemSpec[] = [
@@ -506,17 +670,17 @@ const zhsppyProject: MockProject = (() => {
     "| --- | --- |",
     "| 报告书格式差异导致提取遗漏 | 分项目维护识别词表并定期比对覆盖度 |",
   ].join("\n");
-  const overview: ProjectOverviewDoc = {
-    title: "zhsppy 提取端项目概览",
-    bodyMd: zr2Body,
-    revisionNo: 2,
-    summary: "明确成功标准与主要风险",
-    changedAt: daysAgo(2),
-  };
-  const overviewRevisions: OverviewRevision[] = [
-    overviewRevision(2, "补方向、范围与成功标准", overview.summary, overview.changedAt, { ...overview, bodyMd: zr2Body }),
-    overviewRevision(1, "创建项目概览", "定位与重点问题", daysAgo(9), { ...overview, bodyMd: zr1Body }),
-  ];
+  // 仅维护 overview：其余受控 key 缺文档（get_project_doc 抛 DOC_NOT_FOUND 走查样本）
+  const docData = buildDocs([
+    {
+      key: "overview",
+      title: "zhsppy 提取端项目概览",
+      bodies: [zr1Body, zr2Body],
+      revTitles: ["创建项目概览", "补方向、范围与成功标准"],
+      summaries: ["定位与重点问题", "明确成功标准与主要风险"],
+      changedAt: [daysAgo(9), daysAgo(2)],
+    },
+  ]);
   return {
     summary: {
       id: "p-zhsppy",
@@ -534,8 +698,7 @@ const zhsppyProject: MockProject = (() => {
       { source: "UC-001", target: "BR-001", type: "traces" },
     ],
     revisions: revisionsFor("p-zhsppy", items),
-    overview,
-    overviewRevisions,
+    ...docData,
   };
 })();
 

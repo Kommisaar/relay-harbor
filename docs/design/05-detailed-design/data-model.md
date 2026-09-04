@@ -9,8 +9,8 @@
 erDiagram
     projects ||--o{ items : "拥有（编号空间隔离）"
     projects ||--o| project_settings : "每项目一行"
-    projects ||--o| project_overview : "每项目一篇（UI-035）"
-    project_overview ||--o{ project_overview_revisions : "产生"
+    projects ||--o{ project_docs : "按 key 每项目一篇（DOM-009）"
+    project_docs ||--o{ project_doc_revisions : "产生"
     items ||--o{ revisions : "产生"
     items ||--o{ relations_outgoing : "作为源"
     items ||--o{ relations_incoming : "作为目标"
@@ -25,7 +25,7 @@ erDiagram
         uuid id PK
         uuid project_id FK
         text display_code "如 FR-001"
-        text item_type "14 种前缀之一，不可变"
+        text item_type "15 种前缀之一，不可变"
         text title
         text body_md
         json metadata
@@ -52,15 +52,17 @@ erDiagram
         uuid project_id PK
         json data
     }
-    project_overview {
+    project_docs {
         uuid project_id PK
+        text doc_key PK "受控词表 overview/data_model/structure/tech_stack"
         text title
         text body_md
         int current_revision "乐观并发凭据（同 items 语义）"
         datetime updated_at
     }
-    project_overview_revisions {
-        uuid project_id PK "与 revision_no 联合主键"
+    project_doc_revisions {
+        uuid project_id PK "与 doc_key、revision_no 联合主键"
+        text doc_key PK
         int revision_no PK
         text title "修订标题（2026-09-03 用户指令新增，替代 actor）"
         text summary
@@ -73,11 +75,13 @@ erDiagram
 superseded_by 字段），revisions=DOM-004，relations=DOM-003；
 display_code 即 DOM-008。ChangeSet（DOM-005）不落表——它是端口操作
 的参数，提交结果体现在 items/revisions/relations 的变更中。
-project_overview / project_overview_revisions 为项目概览文档
-（UI-035，2026-09-02 新增）：每项目一篇、Agent 经 MCP 修订、UI 只读；
-不入 items 体系——无类型前缀（DOM-008 不适用）、无状态机、无关系，
-独立成表避免污染 14 类型清单与计数；修订同样不可变追加（BR-004
-同规：无 UPDATE/DELETE），级联删除随项目（INV-010）。
+project_docs / project_doc_revisions 为项目级文档（DOM-009）：
+每项目每 key 一篇、Agent 经 MCP 修订、UI 只读；不入 items 体系——
+无类型前缀（DOM-008 不适用）、无状态机、无关系，独立成表避免污染
+15 类型清单与计数；修订同样不可变追加（BR-004 同规：无
+UPDATE/DELETE），级联删除随项目（INV-010）。2026-09-04 修订循环由
+project_overview 两表泛化而来（UI-035 概览成为 key=overview 的实例，
+M1 未实现期改表零迁移）。
 
 ## 标识与约束
 
@@ -120,7 +124,7 @@ project_overview / project_overview_revisions 为项目概览文档
 - `items(project_id, item_type, status)`：类型分组列表、看板过滤；
 - `items(project_id, display_code)`：即唯一约束，编号精确读取；
 - `revisions(item_id, revision_no)`：即主键，历史顺序读取；
-- `project_overview_revisions(project_id, revision_no)`：即主键，
+- `project_doc_revisions(project_id, doc_key, revision_no)`：即主键，
   历史顺序读取；
 - `relations(target_id)`：入边查询——影响定位与关联展开的遍历热点；
 - `relations(source_id)`：出边查询。

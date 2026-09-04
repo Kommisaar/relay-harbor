@@ -5,10 +5,12 @@
 // 路由跳 /projects/:id 落地项目概览 index）；进入层级（/projects/:id/*）
 // = 返回行（回 /projects，侧栏与路由同步落回根层级，维持「侧栏反映
 // 路由」不变式）+ 项目题行（非交互，不承载指示条与选中态）+ 子导航
-// （项目概览/项目统计/14 类型分组清单/任务面板——2026-09-02 用户指令：
-// 原「概览」项拆分；2026-09-01 用户指令：类型块扁平拆分常驻、UI-xxx
-// 升格第 14 类型；同日用户指令：类型清单按设计阶段加组头小字，TASK
-// 与任务面板不入组置尾）。原「选中项目就地展开子导航」树形呈现废止
+// （项目概览/项目统计/项目文档三直达链接/15 类型分组清单/任务面板——
+// 2026-09-02 用户指令：原「概览」项拆分；2026-09-01 用户指令：类型块
+// 扁平拆分常驻、UI-xxx 升格第 14 类型；2026-09-04 修订循环：MOD 升格
+// 第 15 类型入详细设计组，同日用户指令：+项目文档三直达链接（DOM-009
+// 其余三 key 直达 docs/:key，紧随项目统计、不单独成组——二次指令定案）；
+// 类型清单按设计阶段加组头小字，TASK 与任务面板不入组置尾）。原「选中项目就地展开子导航」树形呈现废止
 // （留痕 app-shell.md）。设置页不显示（无二级导航）。导出 2026-08-28
 // 用户指令移除（卡片弹出框），搜索 2026-08-28 用户指令暂缓移除。
 // 选中态为与第一层同款的共享指示条（位移动画，2026-09-01 用户指令）
@@ -22,7 +24,7 @@ import { ArrowLeft24Regular, Library24Regular } from "@fluentui/react-icons";
 import { useTranslation } from "react-i18next";
 import { useLayoutEffect, useRef } from "react";
 import { listProjects } from "../../api/commands";
-import type { ItemType } from "../../api/types";
+import type { ItemType, ProjectDocKey } from "../../api/types";
 import { moveIndicator } from "./indicatorMotion";
 
 // 子导航分组词表（2026-09-02 用户指令）：按设计阶段划分，与 docs/design/
@@ -33,8 +35,18 @@ const TYPE_GROUPS: { key: string; types: readonly ItemType[] }[] = [
   { key: "useCases", types: ["UC"] },
   { key: "domainModel", types: ["DOM"] },
   { key: "architecture", types: ["CMP", "INT", "SEQ", "ADR"] },
-  { key: "detailedDesign", types: ["UI"] },
+  { key: "detailedDesign", types: ["UI", "MOD"] },
   { key: "verification", types: ["RISK", "OQ"] },
+];
+
+// 项目级文档直达链接（DOM-009 受控 key，2026-09-04 同日用户指令补入口
+// +二次指令定案「直接跟在项目统计」：不单独成组、无组头）：概览
+// （overview）即 index 已单列上方，其余三 key 紧随项目统计常驻；工具级
+// 静态词表与类型清单同策略——无文档的 key 同样显示（页内 DOC_NOT_FOUND 错误态）
+const DOC_LINKS: { key: ProjectDocKey; labelKey: string }[] = [
+  { key: "data_model", labelKey: "doc_dataModel" },
+  { key: "structure", labelKey: "doc_structure" },
+  { key: "tech_stack", labelKey: "doc_techStack" },
 ];
 
 // 入场动画（patterns.md「侧栏条目入场动画」，2026-09-02 用户指令）：
@@ -237,6 +249,12 @@ export function Sidebar({ projectId }: { projectId: string | null }) {
           </div>
           <SubLink to={base} label={t("nav.overview")} active={pathname === base} enterStyle={nextEnter()} />
           <SubLink to={`${base}/stats`} label={t("nav.stats")} active={pathname === `${base}/stats`} enterStyle={nextEnter()} />
+          {DOC_LINKS.map(({ key, labelKey }) => {
+            const to = `${base}/docs/${key}`;
+            return (
+              <SubLink key={key} to={to} label={t(`nav.${labelKey}`)} active={pathname === to} enterStyle={nextEnter()} />
+            );
+          })}
           {TYPE_GROUPS.map((group) => (
             <Fragment key={group.key}>
               <div

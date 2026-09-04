@@ -70,3 +70,36 @@
 - 代码级验证（编译、测试执行）不在设计验证范围，属实现阶段；
 - M2 条目（基线流程、导入、快照、关系图）未编号未追踪，按 01 README
   声明属预期。
+
+## 2026-09-04 修订循环复核（+MOD 与 DOM-009）
+
+范围：模块设计条目化（MOD，词表 14→15）与项目级文档机制（DOM-009，
+project_docs 泛化、IPC 命令改名、MCP 工具 +2、导出装配视图）。
+
+同步点核对（逐一改讫）：
+
+- 类型数「14 种」→「15 种」：DOM-002、DOM-008、FR-003 备注、
+  data-model items.item_type 注记、INT-006 目录结构注释、
+  app-shell 类型清单分组；
+- 概览命令改名 `get_project_overview`/`list_project_overview_revisions`
+  → `get_project_doc`/`list_project_doc_revisions`：INT-001 命令清单、
+  ui/README UI-035 行（key=overview，行为不变）；ipc-command-whitelist
+  同步随实现阶段 B 落地；
+- 表名 `project_overview(_revisions)` → `project_docs(_revisions)`：
+  data-model ER 图、概念对应说明、索引清单；
+- 新编号：DOM-009（项目级文档）、FR-019（项目级文档维护）、UC-019
+  （维护项目级文档）——编号词表内无冲突；INV/BR/ADR 未新增；
+- 追踪：链路一补 FR-019/UC-019/DOM-009 与工具 14；链路三补装配视图；
+  02 README 覆盖表 +FR-019 行、用例数 18→19。
+
+结果：**通过**；无阻塞。待重新确认的修订文档：02/03（状态头已标注）。
+明确不承载（留痕）：参与者、状态模型、业务过程、部署、glossary、
+00 元信息、consistency-check 的独立条目化（2026-09-04 裁决，综述类
+归 DOM-009 或导出装配视图）。
+
+同日追加（项目文档 UI 入口补齐复核）：FR-019 验收（UI 侧四 key 浏览）
+↔ UI-035 泛化（index=overview + `docs/:key`）↔ app-shell 子导航直达
+链接（紧随项目统计、不单独成组）↔ modules/frontend 路由 ↔ mock 夹具（p-relay 四 key
+齐、p-zhsppy 仅 overview 作 DOC_NOT_FOUND 样本）一致；query key 泛化
+`["projects", id, "doc", key]` 不影响 ADR-006 项目前缀失效；OQ-007
+随之关闭。结果：**通过**。

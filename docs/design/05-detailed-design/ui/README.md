@@ -23,7 +23,7 @@
 | UI-007 | 窗口默认 1280×800、最小 1024×640、可自由缩放；常规密度（假设） | app-shell |
 | UI-010 | 项目列表页由第二层导航「项目」承载，列表行/卡片双形态可切换 | pages/project-list |
 | UI-011 | 项目统计页（2026-09-02 用户指令自「项目概览页」更名并移居 `/projects/:id/stats`，index 落地页让位 UI-035；FR-018 统计语义不变）：状态统计/类型分布+活动图（2026-09-02 双卡并排；同日命名自修订热力图改活动图并移除月份/星期标注）/最近修订（2026-09-02 阻塞提醒卡片整个移除，阻塞信息由任务看板承担；最近修订独占一栏） | pages/project-stats |
-| UI-035 | 项目概览页为进入项目默认落地页（index，2026-09-02 用户指令新增，同日由结构化五卡改版为 **article 文档形态**）：每项目一篇可维护文档——头部（标题 + rN·时间，操作者元信息 2026-09-03 随修订模型移除）+ Markdown 正文 + 修订时间线版本切换（UI-017 同款浮动胶囊；正文由「与上一版对比」开关控制单栏 diff，2026-09-03 同日三改）；数据 get_project_overview + list_project_overview_revisions（INT-001 白名单 15→16），Agent 经 MCP 维护、UI 只读渲染 | pages/project-overview |
+| UI-035 | 项目概览页为进入项目默认落地页（index，2026-09-02 用户指令新增，同日由结构化五卡改版为 **article 文档形态**）：每项目一篇可维护文档——头部（标题 + 当前版本/旧修订版本 vN 与相对时间双 chip，版本身份前缀 2026-09-04 用户指令由 r 改 v；操作者元信息 2026-09-03 随修订模型移除）+ Markdown 正文 + 修订时间线版本切换（UI-017 同款浮动胶囊；正文由「与上一版对比」开关控制单栏 diff，2026-09-03 同日三改）；数据 get_project_doc(key) + list_project_doc_revisions(key)（INT-001 白名单 16 条，2026-09-04 修订循环由 get_project_overview / list_project_overview_revisions 泛化改名，行为不变）；页面按 key 泛化为项目级文档通用页——index=overview 落地，其余三 key（数据模型/项目结构/技术综述）经子导航「项目文档」组 `docs/:key` 直达、词表外 key 回落概览（2026-09-04 同日用户指令补入口），Agent 经 MCP 维护、UI 只读渲染 | pages/project-overview |
 | UI-012 | 条目按 14 类型拆独立子页面（items/type/:type），侧栏类型固定常驻（2026-09-01 用户指令修订，原手风琴聚合页移除；同日二次指令：UI-xxx 升格第 14 类型） | pages/items |
 | UI-013 | 条目标准行：编号+标题+状态徽章+修订号+最后更新时间 | pages/items |
 | UI-014 | 条目页内过滤工具条：状态过滤+关键词+排序（编号/更新时间） | pages/items |
@@ -297,6 +297,37 @@
   单块时长 200→400ms（令牌外值留痕）、错落步进 80→140ms（正文层
   540ms 落定，整体约为初版两倍时长）｜ 规格落 patterns.md
   「页面内容渐入」四改。
+- **统计页四层错落渐入（2026-09-04 用户指令「每层依次上浮就像
+  sidebar 出现一样」，第十五次）**：项目统计页内容拆四块错落——标题 0、
+  状态卡行 140、图表行 280、最近修订卡 420（步进 140 不变，末层恰落
+  总量钳制 420ms）；该页无 tree 内 fixed 元素，容器级整块注入关闭
+  （usePageContainerStyles("workbench", false)）、改走 PageFadeIn
+  内容层，动因是分层而非胶囊（留痕）；骨架屏/错误态/空态不播入场 ｜
+  规格落 patterns.md「页面内容渐入」五改。
+- **子导航 +MOD、条目类型 14→15（2026-09-04 修订循环）**：模块设计
+  文档类别条目化为第 15 类型 MOD（DOM-002 留痕），入「详细设计」
+  组（与 UI 同组、固定序 UI 之后）；侧栏组词表与类型页路由随
+  ITEM_TYPES 常量自动扩展 ｜ 规格落 app-shell.md 类型清单分组段。
+- **项目文档浏览入口补齐（2026-09-04 同日用户指令，第十六次）**：
+  DOM-009 四个受控 key 全部获得只读 UI——项目概览页组件按 key 泛化为
+  项目级文档页（ProjectDocPage）：index=overview 落地不变，其余三 key
+  （数据模型/项目结构/技术综述）经第二层子导航直达 `docs/:key`——
+  三链接直接跟在项目统计之后、**不单独成组**（同日用户二次指令定案
+  「直接跟在项目统计」，组头方案废止；无文档 key 呈 DOC_NOT_FOUND
+  错误态）；词表外 key 回落概览。渲染机制（article + 修订时间线 +
+  手动对比开关）零新增；query key 泛化为 `["projects", id, "doc", key]`；
+  推翻同日先前「入口后置」裁决并关闭 OQ-007 ｜ 规格落
+  pages/project-overview.md、app-shell.md 子导航、modules/frontend、
+  traceability 链路二。
+- **修订显示前缀 r→v（2026-09-04 同日用户指令，第十七次）**：版本身份
+  chip「当前版本 vN / 旧修订版本 vN」、收起态胶囊徽标（查看历史版时
+  vN）与修订时间线行的修订号显示前缀由 r 改 v（r1→v1；BR-004 修订号
+  语义与编号不变，纯呈现层改动，无数据/契约变更）；UI-035 行头部描述
+  顺带补齐第十次拆双 chip 后的实际口径 ｜ 规格落 patterns.md
+  「头部元信息 chip」「修订对比」「修订时间线」「空态」表、
+  pages/item-detail、pages/project-overview；实现 i18n 双语
+  currentRevisionChip/oldRevisionChip + ItemDetailPage/ProjectDocPage
+  胶囊徽标 + RevisionTimeline 修订号。
 
 ## 全局约束（继承，不因 UI 设计改变）
 

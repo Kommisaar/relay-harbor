@@ -108,12 +108,12 @@ export function ItemDetailPage() {
     <article className={page}>
       {/* 详情面板浮动胶囊（2026-09-03 用户指令由「修订历史」胶囊扩为三分区，
           patterns.md「浮动胶囊面板」）：sticky 右上、不占文档流；徽标查看
-          历史版时显 rN、否则修订数；查看历史版时选中底色 */}
+          历史版时显 vN、否则修订数；查看历史版时选中底色 */}
       <CapsulePanel
         label={t("common.detailPanel")}
         icon={<List16Regular />}
         expandIcon={<ArrowExpand16Regular />}
-        badge={viewedRevision != null ? `r${viewedRevision}` : (revisions.data?.length ?? 0)}
+        badge={viewedRevision != null ? `v${viewedRevision}` : (revisions.data?.length ?? 0)}
         active={viewedRevision != null}
         open={panelOpen}
         onOpenChange={setPanelOpen}

@@ -1,7 +1,8 @@
 // 路由集中式（modules/frontend.md 2026-09-01 修订；2026-09-02 拆分修订）：
 // /projects、/projects/:projectId/（index=项目概览 UI-035；stats=项目统计
-// （原概览页更名，2026-09-02 用户指令）、items→重定向首个类型、
-// items/type/:type（2026-09-01 用户指令：条目按 14 类型拆独立子页面，
+// （原概览页更名，2026-09-02 用户指令）、docs/:key=项目级文档其余三 key
+// （2026-09-04 同日用户指令补入口，DOM-009 受控词表）、items→重定向首个类型、
+// items/type/:type（2026-09-01 用户指令：条目按类型拆独立子页面，
 // 聚合页取消）、items/:code、tasks）、/settings。impact 为条目详情
 // 内嵌区（UI-018），不独立路由；导出无路由（2026-08-28 用户指令：
 // 项目列表卡片 Popover，ui/pages/export.md）；搜索无路由（2026-08-28
@@ -10,7 +11,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./layout/AppShell";
 import { Boot } from "./Boot";
 import { ItemDetailPage, ItemsIndexRedirect, ItemsTypePage } from "../features/design";
-import { OverviewPage } from "../features/overview";
+import { ProjectDocPage } from "../features/overview";
 import { ProjectsPage } from "../features/projects";
 import { SettingsPage } from "../features/settings";
 import { StatsPage } from "../features/stats";
@@ -25,8 +26,9 @@ export const router = createBrowserRouter([
       {
         path: "projects/:projectId",
         children: [
-          { index: true, element: <OverviewPage /> },
+          { index: true, element: <ProjectDocPage /> },
           { path: "stats", element: <StatsPage /> },
+          { path: "docs/:key", element: <ProjectDocPage /> },
           { path: "items", element: <ItemsIndexRedirect /> },
           { path: "items/type/:type", element: <ItemsTypePage /> },
           { path: "items/:code", element: <ItemDetailPage /> },

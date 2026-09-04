@@ -10,8 +10,9 @@ import type {
   ItemListFilter,
   ItemSummary,
   ItemType,
-  OverviewRevision,
-  ProjectOverviewDoc,
+  ProjectDoc,
+  ProjectDocKey,
+  ProjectDocRevision,
   ProjectState,
   ProjectSummary,
   RecentRevision,
@@ -21,7 +22,7 @@ import type {
   TaskBoard,
   TaskStatus,
 } from "../types";
-import { ITEM_STATUSES, TASK_STATUSES } from "../types";
+import { ITEM_STATUSES, PROJECT_DOC_KEYS, TASK_STATUSES } from "../types";
 import { findItem, findProject, isTaskActive, projects } from "./fixtures";
 
 const delay = (ms = 150) => new Promise<void>((r) => setTimeout(r, ms));
@@ -95,18 +96,26 @@ export async function getProjectState(projectId: string): Promise<ProjectState> 
   return { byType, itemByStatus, taskByStatus, revisionsByDay: revisionsByDay(projectId) };
 }
 
-export async function getProjectOverview(projectId: string): Promise<ProjectOverviewDoc> {
+// 项目级文档按 key 泛化（DOM-009，2026-09-04 由 get_project_overview 改名）：
+// 受控词表外 key 拒绝（ERR_VALIDATION），词表内但项目未维护该文档 → DOC_NOT_FOUND
+export async function getProjectDoc(projectId: string, key: ProjectDocKey): Promise<ProjectDoc> {
   await delay();
   const project = findProject(projectId);
   if (!project) throw new Error("PROJECT_NOT_FOUND");
-  return { ...project.overview };
+  if (!PROJECT_DOC_KEYS.includes(key)) throw new Error("ERR_VALIDATION");
+  const doc = project.docs[key];
+  if (!doc) throw new Error("DOC_NOT_FOUND");
+  return { ...doc };
 }
 
-export async function listProjectOverviewRevisions(projectId: string): Promise<OverviewRevision[]> {
+export async function listProjectDocRevisions(projectId: string, key: ProjectDocKey): Promise<ProjectDocRevision[]> {
   await delay();
   const project = findProject(projectId);
   if (!project) throw new Error("PROJECT_NOT_FOUND");
-  return [...project.overviewRevisions].sort((a, b) => b.revisionNo - a.revisionNo);
+  if (!PROJECT_DOC_KEYS.includes(key)) throw new Error("ERR_VALIDATION");
+  const list = project.docRevisions[key];
+  if (!list) throw new Error("DOC_NOT_FOUND");
+  return [...list].sort((a, b) => b.revisionNo - a.revisionNo);
 }
 
 export async function listItems(projectId: string, filter: ItemListFilter = {}): Promise<ItemSummary[]> {

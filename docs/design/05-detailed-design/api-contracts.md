@@ -30,6 +30,8 @@ MCP 协议层从同一批 Rust 类型导出。本文解释关键语义，不重�
 | `search_items` | project_id, q, type?, status? | 摘要列表 | 编号精确/前缀 + 标题正文匹配 |
 | `get_context` | project_id, code, depth? | 入边闭包结果（受影响集合） | 影响定位的 Agent 侧形态：derives/satisfies/depends 反向多跳，depth 默认 3、上限 10 |
 | `get_project_state` | project_id | 概况（各类型/状态计数 + `revisions_by_day` 近 182 天逐日修订计数，2026-09-02 概览页活动图新增，原名修订热力图） | 看板与总览数据源 |
+| `get_project_doc` | project_id, key | 文档详情（title, body_md, revision_no, changed_at） | 项目级文档读取（DOM-009）；key 取受控词表 overview/data_model/structure/tech_stack，未知 key 返回 ERR_VALIDATION（2026-09-04 修订循环） |
+| `set_project_doc` | project_id, key, expected_revision, title?, body_md | key, new_revision | 项目级文档写入：追加不可变修订（BR-004 同口径）；ERR_CONFLICT 语义同 edit_item；无状态机、无编号（2026-09-04） |
 | `validate` | project_id | 问题清单 | M1：悬空、终态语义、反向对提示（03 待确认项之一） |
 
 ### 错误码与恢复方式
@@ -68,13 +70,15 @@ MCP 协议层从同一批 Rust 类型导出。本文解释关键语义，不重�
 
 ### 命令清单（完整白名单）
 
-查询：`list_projects`、`get_project_state`、`get_project_overview`
-（project_id → 当前概览文档：title、body_md、revision_no、
-summary、changed_at；2026-09-02 界面设计新增，项目概览页 UI-035
-支撑，同日由结构化五卡改版为 article 文档形态）、
-`list_project_overview_revisions`（project_id → 概览文档修订列表
-倒序，含快照 title/body_md——同 get_item_revisions 一次取齐策略；
-同日新增，白名单 15→16）、`list_items`（按类型/状态/
+查询：`list_projects`、`get_project_state`、`get_project_doc`
+（project_id, key → 项目级文档当前内容：title、body_md、revision_no、
+summary、changed_at；2026-09-04 修订循环由 `get_project_overview` 泛化
+改名——key 取受控词表（DOM-009），概览页 UI-035 传 key=overview 行为
+不变；原命令 2026-09-02 新增、同日由结构化五卡改版为 article 文档形态）、
+`list_project_doc_revisions`（project_id, key → 文档修订列表倒序，
+含快照 title/body_md——同 get_item_revisions 一次取齐策略；
+2026-09-04 由 `list_project_overview_revisions` 泛化改名，白名单总数
+不变 15→16→16）、`list_items`（按类型/状态/
 过滤）、`get_item_detail`、`get_item_revisions`、`get_relations`、
 `get_task_board`、`search_items`、`get_impact`（影响定位）、
 `list_recent_revisions`（project_id, limit → 跨条目修订摘要倒序：
@@ -94,7 +98,7 @@ display_code、标题、revision_no、summary、changed_at；
 不支持自定义；收发两端均由同一生成产物约束，语义不变，原拟名 data-changed 作废）
 payload（specta 类型 DataChangedEvent）：
   projectId: string        // 失效粒度：项目级
-  kinds: ("item"|"relation"|"task"|"project")[]  // 变更类别
+  kinds: ("item"|"relation"|"task"|"project"|"project_doc")[]  // 变更类别（2026-09-04 +project_doc：项目级文档写入失效通知）
   revision?: number        // 触发变更集的最大新修订号（诊断用）
   code?: string            // 主条目编号（可空）
 ```
@@ -134,7 +138,7 @@ bridge 以标准 MCP stdio server 面向客户端；语义同 INT-002，无独�
 <target>/
 ├── README.md            # 项目信息、条目统计、导出时间
 ├── relations.md         # 全部关系索引（按源编号排序）
-└── <type-dir>/          # 每类型一目录（14 类，仅有条目才出现）
+└── <type-dir>/          # 每类型一目录（15 类，仅有条目才出现）
     ├── README.md        # 类型索引（编号、标题、状态）
     └── <NNN>-<slug>.md  # 每条目一文件：元数据头 + 正文 + 修订摘要
 ```
@@ -142,3 +146,20 @@ bridge 以标准 MCP stdio server 面向客户端；语义同 INT-002，无独�
 确定性要求：目录按类型固定序、文件按编号排序、内容含状态与当前修订
 信息、同数据两次导出字节一致（FR-014）；M2 导入按同一结构逆向解析。
 默认仅当前修订 + 修订历史摘要（UC-016 开放问题在此定案）。
+
+### facilitator 装配视图（2026-09-04 修订循环，FR-014 装配细则）
+
+通用结构之上，导出器按受控映射再生 facilitator 模板形态的文件，保证
+文档集与 dev-toolkit 文档体系结构兼容：
+
+| 数据源 | 再生文件 |
+| --- | --- |
+| project_docs[overview] | `00-overview/README.md`（项目概览文档） |
+| project_docs[structure] | `project-structure.md`（项目结构综述） |
+| project_docs[tech_stack] | `tech-stack.md`（技术综述：栈清单/摘要/ADR 索引） |
+| project_docs[data_model] | `05-detailed-design/data-model.md` |
+| MOD 条目（每条一文件，slug 取标题） | `05-detailed-design/modules/<short-name>.md` |
+
+规则：装配视图是通用视图的确定性投影——MOD 条目同时出现在通用
+`MOD/` 类型目录（无损归档）与 `modules/`（模板兼容视图），同内容双
+视图属设计行为；key 无对应文档时不生成文件（不产空壳）。

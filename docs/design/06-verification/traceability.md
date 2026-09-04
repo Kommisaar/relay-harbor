@@ -5,24 +5,28 @@
 
 ## 链路一：Agent 写入（M1 主链路）
 
-- 驱动：FR-001～007、NFR-005/009、CON-009
-- 用例：UC-001～009（UC-004/005/006/009 有详细规约）
-- 领域：DOM-001～006/008、INV-001～009、双状态机
+- 驱动：FR-001～007、FR-019、NFR-005/009、CON-009
+- 用例：UC-001～009、UC-019（UC-004/005/006/009 有详细规约）
+- 领域：DOM-001～006/008/009、INV-001～009、双状态机
 - 架构：CMP-003/004/005/006/008、INT-002/003/004/005、ADR-001/002/004/005
 - 详细设计：modules（domain-core/services/storage-sqlite/local-mcp-api/bridge）、
-  SEQ-001/002、api-contracts（工具 12 + 错误码 10）
+  SEQ-001/002、api-contracts（工具 12→14 + 错误码 10；2026-09-04 修订循环
+  +get_project_doc/set_project_doc，MOD 为 create_item 的第 15 类型）
 - 验证方式：状态机迁移矩阵单测；OCC/环/悬空集成测试；原子性注入失败点；
-  令牌与回环测试；迁移矩阵；WAL 崩溃恢复
+  令牌与回环测试；迁移矩阵；WAL 崩溃恢复；项目级文档 OCC 与 key 词表校验
 - 状态：完整
 
 ## 链路二：只读 UI 与刷新
 
-- 驱动：FR-008～013、FR-018、NFR-002/008、CON-004/009
+- 驱动：FR-008～013、FR-018/019、NFR-002/008、CON-004/009
 - 用例：UC-010～015、UC-017/018
 - 架构：CMP-001/002、INT-001、ADR-006/007
 - 详细设计：modules/frontend、api-contracts（命令白名单 14 +
   data-changed payload）、ui/（界面结构 9 页面 + 骨架，UI-001～032，
-  2026-08-28 界面设计访谈新增；FR-018 与 list_recent_revisions 同批）
+  2026-08-28 界面设计访谈新增；FR-018 与 list_recent_revisions 同批）；
+  项目级文档四 key 只读浏览（DOM-009，子导航直达
+  `docs/:key`——三链接紧随项目统计、不单独成组，2026-09-04 同日用户
+  指令补入口）
 - 验证方式：ipc 白名单 CI 断言；事件失效链路集成测试；依赖白名单 lint；
   规模数据计时（NFR-002）；UI 走查（NFR-008）
 - 状态：完整
@@ -33,7 +37,9 @@
 - 用例：UC-016（详细规约）
 - 领域：domain/snapshot 确定性规则
 - 架构：CMP-004/007、INT-006
-- 详细设计：modules/export、api-contracts INT-006（目录结构）
+- 详细设计：modules/export、api-contracts INT-006（目录结构 +
+  facilitator 装配视图：modules/ ← MOD 条目、data-model.md 等 ←
+  project_docs，2026-09-04 修订循环）
 - 验证方式：确定性（同数据两次导出 diff 为空）；失败清理；M2 导入逆向
   以同一结构为契约
 - 状态：完整

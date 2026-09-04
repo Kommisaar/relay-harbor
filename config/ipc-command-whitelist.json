@@ -6,13 +6,14 @@
     "app_version 为非业务信息命令（UI 关于页显示版本），不属 12 个业务只读命令。",
     "2026-08-28 界面设计修订：+list_recent_revisions（FR-018 概览页，业务只读命令 12→13）。",
     "2026-09-02 界面设计修订：+get_project_overview（UI-035 项目概览页，业务只读命令 13→14）。",
-    "2026-09-02 概览页改版 article 文档形态：+list_project_overview_revisions（UI-035 概览修订历史，业务只读命令 14→15）。"
+    "2026-09-02 概览页改版 article 文档形态：+list_project_overview_revisions（UI-035 概览修订历史，业务只读命令 14→15）。",
+    "2026-09-04 修订循环（DOM-009 项目级文档）：get_project_overview→get_project_doc(key)、list_project_overview_revisions→list_project_doc_revisions(key)，受控 key 词表见 api-contracts INT-001；业务只读命令数不变（15）。"
   ],
   "commands": [
     "list_projects",
     "get_project_state",
-    "get_project_overview",
-    "list_project_overview_revisions",
+    "get_project_doc",
+    "list_project_doc_revisions",
     "list_items",
     "get_item_detail",
     "get_item_revisions",

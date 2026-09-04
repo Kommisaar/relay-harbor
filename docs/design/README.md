@@ -3,14 +3,14 @@
 ## 当前状态
 
 - 工作模式：实现期（UI 先行，后端联调暂缓）
-- 当前阶段：UI 全量实现完成（mock 数据层，2026-08-28，检查全绿）；后端命令未落地（IPC 白名单 16 中声明 1）
-- 设计基线：00 概览、01 需求、02 用例、03 领域模型、04 架构、05 详细设计（含界面设计）、06 验证（均 2026-08-27 确认；2026-08-28 界面设计扩展随实现启动确认）
-- 下一步：后端命令落地与联调（届时 api/ 门面切回 tauri-specta 产物）
+- 当前阶段：UI 全量实现完成（mock 数据层，2026-08-28，检查全绿）；后端命令未落地（IPC 白名单 16 中声明 1）；2026-09-04 修订循环（+MOD 与 DOM-009）完成设计修订，02/03/05 待重新确认；同日用户指令补项目文档 UI 入口（`docs/:key` 三直达链接紧随项目统计、不单独成组，已实现全绿）
+- 设计基线：00 概览、01 需求、02 用例、03 领域模型、04 架构、05 详细设计（含界面设计）、06 验证（均 2026-08-27 确认；2026-08-28 界面设计扩展随实现启动确认；2026-09-04 修订循环见最近工作摘要）
+- 下一步：确认 2026-09-04 修订稿 → 后端命令落地与联调（届时 api/ 门面切回 tauri-specta 产物）
 
 ## 设计基线摘要（2026-08-27 确认）
 
 - **范围**：M1 = Agent 经 MCP 写入（唯一业务写入口）+ UI 纯只读 + 确定性 Markdown 导出；M2（基线确认流程、确定性导入/快照、关系图、JSON 导出）未编号，启动时回 01 补号。
-- **规模**：FR 16 ｜ NFR 9 ｜ CON 9 ｜ UC 18（详细规约 6）｜ DOM 8 + INV 10 ｜ CMP 8 ｜ INT 6 ｜ ADR 8 ｜ MCP 工具 12 + 错误码 10 ｜ IPC 只读命令 13 ｜ 数据表 5。（2026-08-28 界面设计修订：FR 16→18、IPC 命令 13→14、新增 UI 决策 32 条；2026-09-02 界面设计修订：UI 决策 →UI-035、IPC 命令 14→16（get_project_overview / list_project_overview_revisions）、数据表 5→7（project_overview 两表），详见最近工作摘要）
+- **规模**：FR 19 ｜ NFR 9 ｜ CON 9 ｜ UC 19（详细规约 6）｜ DOM 9 + INV 10 ｜ CMP 8 ｜ INT 6 ｜ ADR 8 ｜ MCP 工具 14 + 错误码 10 ｜ IPC 只读命令 16 ｜ 数据表 7（2026-08-28 界面设计修订：FR 16→18、IPC 命令 13→14、新增 UI 决策 32 条；2026-09-02 界面设计修订：UI 决策 →UI-035、IPC 命令 14→16（get_project_overview / list_project_overview_revisions）、数据表 5→7（project_overview 两表）；2026-09-04 修订循环：条目类型 14→15（+MOD）、FR 18→19、UC 18→19、DOM 8→9、MCP 工具 12→14（+get_project_doc/set_project_doc）、IPC 命令改名 get_project_doc / list_project_doc_revisions（总数 16 不变）、project_overview 两表泛化 project_docs（总数 7 不变）、导出 +facilitator 装配视图，详见最近工作摘要）
 - **架构要点**：Tauri v2 四层 DDD（domain 纯净、CI 断言）；意图级存储端口 + ChangeSet 单事务（ADR-002）；本地 HTTP API 直接讲 MCP（ADR-004）；bridge 纯 stdio↔HTTP 网关、15s 拉起时限（ADR-005）；UI 零业务写命令、data-changed 事件失效通知（ADR-006/CON-009）；React + Fluent UI v9 + TanStack Query（ADR-007）；M1 单 crate 零投机（ADR-008）。
 - **验证结论**：通过；阻塞 0；开放风险 2（RISK-004 编码 Agent 越界——CI 三件套随脚手架首 commit 建立；RISK-008 LIKE 性能——FTS5 升级路径预埋）。
 - **纪律**：实现期一切偏差留痕、新需求先修订设计（修订循环自 02 起）。
@@ -18,12 +18,12 @@
 ## 阶段状态
 
 - 00 项目概览：已确认（2026-08-27 定位修订）
-- 01 需求：已确认（2026-08-27 定位修订稿；2026-08-28 增补 FR-017/018、修订 FR-016，随界面设计基线一并确认）
-- 02 用例：已确认（2026-08-28 UC-018 目标补界面语言）
-- 03 领域模型：已确认
+- 01 需求：需重新确认（2026-08-27 定位修订稿；2026-08-28 增补 FR-017/018、修订 FR-016；2026-09-04 +FR-019、修订 FR-003/FR-014；同日入口补齐：FR-019 验收 +UI 浏览、FR-018 关联 +DOM-009/FR-019）
+- 02 用例：需重新确认（2026-08-28 UC-018 目标补界面语言；2026-09-04 +UC-019）
+- 03 领域模型：需重新确认（2026-08-27 确认；2026-09-02 +已废弃终态；2026-09-04 +MOD、+DOM-009）
 - 04 架构：已确认
-- 05 详细设计：已确认（2026-08-27；界面设计扩展 2026-08-28 随实现启动确认）
-- 06 验证：已确认（最终基线；2026-08-28 追踪补充随界面设计基线确认）
+- 05 详细设计：需重新确认（2026-08-27；界面设计扩展 2026-08-28 随实现启动确认；2026-09-04 契约泛化/两表泛化/子导航 +MOD/导出装配视图；同日入口补齐：子导航「项目文档」组 + `docs/:key` 路由）
+- 06 验证：已确认（最终基线；2026-08-28 追踪补充随界面设计基线确认；2026-09-04 修订循环复核追加，结论通过；同日入口补齐复核追加，OQ-007 关闭）
 
 ## 文档导航
 
@@ -125,3 +125,7 @@
 - 2026-09-04 ｜ 05 界面设计 ｜ 用户指令（第十二次）：页面内容渐入上浮距离 **8px→16px**（page-content-enter keyframes 起帧 translateY 调整；侧栏条目入场保持 8px 不同步）｜ patterns.md「页面内容渐入」同日二改、ui/README 第十一次条目订正
 - 2026-09-04 ｜ 05 界面设计 ｜ 用户指令（第十三次，「调整为方案三看看」）：整体渐入升级为**内容分块错落**——条目详情/项目概览内容层拆两块：头部层（返回链接/标题/元信息 chip）delay 0 先入、正文层 +80ms 随后；PageFadeIn 增 delay 入参经行内 --page-enter-delay 注入，.page-enter 增 animation-delay var 门控，backwards fill 保证延迟期保持首帧不可见；步进 80ms、总量钳制 240ms（同侧栏哲学）留给未来更多分块；其余五页维持容器整体渐入；胶囊不入动画与重播语义不变 ｜ 规格落 patterns.md「页面内容渐入」三改、ui/README 促成的设计修订条目
 - 2026-09-04 ｜ 05 界面设计 ｜ 用户反馈「速度太快」（第十四次）：渐入节奏调慢——单块时长 durationNormal(200ms)→400ms（令牌外值留痕）、分块错落步进 80ms→140ms（正文层 540ms 落定，整体约为初版两倍）；16px 上浮与减速曲线不变 ｜ 规格落 patterns.md「页面内容渐入」四改、ui/README 促成的设计修订条目
+- 2026-09-04 ｜ 05 界面设计 ｜ 用户指令（第十五次，「每层依次上浮就像 sidebar 出现一样」）：统计页四层错落渐入——标题 0/状态卡行 140/图表行 280/最近修订卡 420，容器级注入关闭改 PageFadeIn 内容层（动因分层而非胶囊，留痕）｜ 规格落 patterns.md「页面内容渐入」五改、ui/README 促成的设计修订条目；实现 StatsPage + npm run check 全绿 + 实览动画参数验证
+- 2026-09-04 ｜ 01→06 修订循环 ｜ 主题：facilitator 模板文档类别承载裁决（用户逐轮确认「两必要」）——① 模块设计条目化为第 15 类型 MOD（词表 14→15，固定序 UI 之后；FR-003/FR-014 修订、02 +UC-019 维护项目级文档归属 Agent 组、03 DOM-002 留痕与 INV-008 注记）；② 单例综述文档建项目级文档概念 DOM-009（key 受控词表 overview/data_model/structure/tech_stack，明确不是条目——无编号/无状态机/不入关系图；+FR-019 项目级文档维护）③ 契约泛化（IPC get_project_doc/list_project_doc_revisions 改名、MCP +get_project_doc/set_project_doc、data-changed +project_doc 类别、project_overview 两表泛化 project_docs、INT-006 +facilitator 装配视图：modules/←MOD、data-model.md 等←project_docs）④ 子导航详细设计组 +MOD ｜ 06 复核追加（结论通过）；明确不承载留痕：参与者/状态模型/业务过程/部署/glossary/00 元信息/consistency-check（综述类归 DOM-009 或装配视图）｜ 02/03/05 待重新确认；实现（常量/mock/白名单同步）待确认后执行
+- 2026-09-04 ｜ 05 界面设计 ｜ 用户指令（第十六次，「补UI入口，文档放到项目级就行了」+同日二次指令定案「直接跟在项目统计」）：项目文档浏览入口补齐——DOM-009 四个受控 key 全部获得只读 UI：项目概览页组件按 key 泛化为项目级文档页（ProjectDocPage），index=overview 落地不变，其余三 key（数据模型/项目结构/技术综述）经第二层子导航直达 `docs/:key`——三链接直接跟在项目统计之后、不单独成组（组头方案即提即废，留痕；无文档 key 呈 DOC_NOT_FOUND 错误态，词表外 key 回落概览）；渲染机制零新增、无新增 IPC 命令，query key 泛化 `["projects", id, "doc", key]` ｜ 推翻同日先前「入口后置」裁决并关闭 OQ-007（编号化规格升格 UI/MOD 类型、长文档走项目级文档、其余不纳入）｜ 修订 01 functional（FR-019 验收/备注、FR-018 关联）、05 app-shell（子导航 + mermaid）、ui/README（UI-035 行 + 修订条目）、pages/project-overview（路由/定位/数据/边界/测试要点）、modules/frontend、06 traceability 链路二、open-questions OQ-007 关闭、06 consistency-check 复核追加；实现：features/overview 概览页泛化（OverviewPage→ProjectDocPage、queries 泛化 useProjectDocQuery(key)）、路由 docs/:key、侧栏三直达链接（紧随项目统计）、i18n 双语（nav.doc_* 三键，顺删 UI-034 回退遗留的 nav.docs 死键）｜ npm run check 全绿；实览验证三键直达渲染、zhsppy 数据模型 DOC_NOT_FOUND 错误态、词表外 key 回落、概览回归正常
+- 2026-09-04 ｜ 05 界面设计 ｜ 用户指令（第十七次，「版本号使用v吧，不用r」）：修订显示前缀 r→v——版本身份 chip「当前版本 vN/旧修订版本 vN」、胶囊徽标（查看历史版时 vN）、修订时间线修订号全部改 v 前缀（BR-004 修订号语义与编号不变，纯呈现层；UI-035 行顺带补齐双 chip 口径）｜ 修订 patterns.md（头部元信息 chip/修订对比/修订时间线/空态表）、pages/item-detail、pages/project-overview、ui/README（UI-035 行 + 修订条目）；实现 i18n 双语 currentRevisionChip/oldRevisionChip、ItemDetailPage/ProjectDocPage 胶囊徽标、RevisionTimeline 修订号 ｜ npm run check 全绿；实览验证文档页与条目详情（FR-001）的 vN chip/徽标/时间线呈现及历史版切换
