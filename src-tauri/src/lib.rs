@@ -60,6 +60,10 @@ pub fn run() {
         .expect("导出 TypeScript 绑定失败");
 
     tauri::Builder::default()
+        // FR-015 单实例：二次启动唤起已有窗口（回调在第二实例进程内执行）
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app);
+        }))
         .invoke_handler(specta.invoke_handler())
         .setup(|app| {
             // 组合根装配（ADR-001）：数据库打开 + 迁移 + 日志初始化。
@@ -73,10 +77,80 @@ pub fn run() {
             let state = app.state::<state::AppState>();
             tauri::async_runtime::block_on(interfaces::http::start(&handle, &state))
                 .expect("MCP 通道启动失败");
+            // 托盘常驻（FR-015）：菜单文案随语言设置（zh/en），左键唤起主窗
+            build_tray(app)?;
             Ok(())
+        })
+        // FR-015 关窗策略（settings.closeBehavior）：tray=隐藏常驻托盘；
+        // quit=默认退出。设置在关窗时即时读取（非启动缓存）。
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                use crate::infra::runtime::{CloseBehavior, load_settings};
+                use tauri::Manager;
+                let paths = window
+                    .app_handle()
+                    .state::<state::AppState>()
+                    .paths
+                    .clone();
+                if load_settings(&paths).close_behavior == CloseBehavior::Tray {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("运行 RelayHarbor 失败");
+}
+
+/// 唤起主窗口（托盘单击 / 单实例二次启动共用）
+fn show_main_window(app: &tauri::AppHandle) {
+    use tauri::Manager;
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+/// 托盘构建（FR-015）：显示主窗口 / 退出；文案随 settings.language
+fn build_tray(app: &tauri::App) -> tauri::Result<()> {
+    use crate::infra::runtime::{LanguageSetting, load_settings};
+    use tauri::menu::{Menu, MenuItem};
+    use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    use tauri::Manager;
+
+    let paths = app.state::<state::AppState>().paths.clone();
+    let zh = load_settings(&paths).language != LanguageSetting::En;
+    let (show_label, quit_label) = if zh {
+        ("显示主窗口", "退出")
+    } else {
+        ("Show window", "Quit")
+    };
+    let show = MenuItem::with_id(app, "show", show_label, true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", quit_label, true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&show, &quit])?;
+    let _tray = TrayIconBuilder::with_id("main-tray")
+        .icon(app.default_window_icon().expect("应用图标").clone())
+        .tooltip("RelayHarbor")
+        .menu(&menu)
+        .show_menu_on_left_click(false)
+        .on_menu_event(|app, event| match event.id.as_ref() {
+            "show" => show_main_window(app),
+            "quit" => app.exit(0),
+            _ => {}
+        })
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                show_main_window(tray.app_handle());
+            }
+        })
+        .build(app)?;
+    Ok(())
 }
 
 #[cfg(test)]

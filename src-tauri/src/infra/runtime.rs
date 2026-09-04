@@ -15,6 +15,10 @@ pub struct RuntimePaths {
     pub db_path: PathBuf,
     pub logs_dir: PathBuf,
     pub settings_path: PathBuf,
+    /// bridge.json 目录（INT-005 权威路径 ~/.relayharbor/runtime/，P6.0 修正）
+    pub runtime_dir: PathBuf,
+    /// bridge.json 完整路径（bridge 侧发现读取）
+    pub bridge_json_path: PathBuf,
 }
 
 impl RuntimePaths {
@@ -31,10 +35,14 @@ impl RuntimePaths {
         fs::create_dir_all(&data_root)?;
         let logs_dir = data_root.join("logs");
         fs::create_dir_all(&logs_dir)?;
+        let runtime_dir = data_root.join("runtime");
+        fs::create_dir_all(&runtime_dir)?;
         Ok(RuntimePaths {
             db_path: data_root.join("relayharbor.db"),
             logs_dir,
             settings_path: data_root.join("settings.json"),
+            bridge_json_path: runtime_dir.join("bridge.json"),
+            runtime_dir,
             data_root,
         })
     }
@@ -180,11 +188,22 @@ pub fn token_new() -> String {
 pub fn write_bridge_json(paths: &RuntimePaths, discovery: &BridgeDiscovery) -> io::Result<()> {
     let text = serde_json::to_string_pretty(discovery)
         .map_err(|e| io::Error::other(format!("bridge.json 序列化失败：{e}")))?;
-    let path = paths.data_root.join("bridge.json");
-    let tmp = path.with_extension("json.tmp");
+    let tmp = paths.bridge_json_path.with_extension("json.tmp");
     fs::write(&tmp, text)?;
-    fs::rename(&tmp, &path)?;
+    fs::rename(&tmp, &paths.bridge_json_path)?;
     Ok(())
+}
+
+/// 读取 bridge.json（bridge 侧发现入口；缺失/损坏/版本不识别 → None）
+pub fn read_bridge_json(paths: &RuntimePaths) -> Option<BridgeDiscovery> {
+    let text = fs::read_to_string(&paths.bridge_json_path).ok()?;
+    match serde_json::from_str::<BridgeDiscovery>(&text) {
+        Ok(d) if d.version == 1 => Some(d),
+        other => {
+            tracing::warn!(parsed = ?other.map(|d| d.version), "bridge.json 缺失或版本不识别");
+            None
+        }
+    }
 }
 
 #[cfg(test)]

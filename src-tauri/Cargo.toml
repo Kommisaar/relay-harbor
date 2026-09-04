@@ -26,9 +26,10 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 specta = "=2.0.0-rc.22"
 specta-typescript = "0.0.9"
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] } # FR-015 托盘常驻
 tauri-specta = { version = "2.0.0-rc.21", features = ["typescript", "derive"] }
 uuid = { version = "1", features = ["v4", "serde"] } # 内部主键（DOM-001/002，DB UUID 列）
+tauri-plugin-single-instance = "2" # FR-015 单实例（二次启动唤起已有窗口）
 
 # infra 层（CMP-006/007，随 P2 引入）：SQLite 存储 + 运行时 + 结构化日志
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "chrono"] }
@@ -39,7 +40,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 zip = { version = "2", default-features = false, features = ["deflate"] } # 导出 zip 形态（UI-导出契约 form=zip；入口固定时间戳保证字节确定性）
 
 # interfaces/http 层（CMP-003，随 P5(2/2) 引入）：本地 MCP API
-rmcp = { version = "3.2", features = ["server", "transport-streamable-http-server", "macros"] } # 官方 MCP Rust SDK（选型留痕 2026-09-05：crates.io 3.2.0，Streamable HTTP + 工具宏）
+rmcp = { version = "3.2", features = ["server", "client", "transport-io", "transport-streamable-http-server", "transport-streamable-http-client-reqwest", "macros"] } # client+streamable-http-client：mcp-bridge 上游（P6） # 官方 MCP Rust SDK（选型留痕 2026-09-05：crates.io 3.2.0，Streamable HTTP + 工具宏）
 axum = "0.8"                      # 与 rmcp streamable-http-server 同栈（Router/serve/middleware）
 schemars = "1"                    # MCP 工具参数 JSON Schema（INT-002：协议层从 Rust 类型导出）
 
