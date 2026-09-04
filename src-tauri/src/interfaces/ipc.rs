@@ -722,16 +722,12 @@ pub async fn export_markdown(
     };
     let outcome = {
         let mut progress = |percent: u32, phase: &str| {
-            let event = ExportProgressEvent {
+            let _ = ExportProgressEvent {
                 project_id: project_id.clone(),
                 percent,
                 phase: phase.to_string(),
-            };
-            // 发射必须经主线程派发（WebView2 COM 线程亲和，同 http::emit_changed）
-            let handle = app.clone();
-            let _ = app.run_on_main_thread(move || {
-                let _ = event.emit(&handle);
-            });
+            }
+            .emit(&app);
         };
         state
             .export
