@@ -3,6 +3,9 @@ name = "relay-harbor"
 version = "0.1.0"
 description = "RelayHarbor — AI 辅助开发工件管理（Agent 经 MCP 写入 + UI 只读 + Markdown 导出）"
 edition = "2021"
+# P6 起双可执行：主应用 + mcp-bridge（src/bin/）。裸 `cargo run` 起主应用；
+# 桥需显式 `cargo run --bin relay-harbor-bridge`（或直接跑 target 下的 exe）。
+default-run = "relay-harbor"
 
 # 分层边界（ADR-001/008）由 scripts/check-rust-boundaries.mjs 在 CI 强制：
 #   domain 禁 tauri/sqlx/axum；services 禁 tauri/sqlx/axum；

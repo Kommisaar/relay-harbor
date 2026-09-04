@@ -104,6 +104,17 @@ pub enum CloseBehavior {
     Quit,
 }
 
+/// 原子写共用的并发安全 tmp 名：固定名会被并发双写互删
+///（第二次 rename 拿不到 tmp 报 ENOENT；AppShell 挂载双发 set_settings
+/// 实证 2026-09-04），每次调用以随机后缀隔离。
+fn unique_tmp_path(target: &Path) -> PathBuf {
+    let stem = target
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "tmp".to_string());
+    target.with_file_name(format!("{stem}.tmp.{}", uuid::Uuid::new_v4().simple()))
+}
+
 /// 读取 settings.json（缺失/损坏 → 默认值并留痕）
 pub fn load_settings(paths: &RuntimePaths) -> AppSettings {
     match fs::read_to_string(&paths.settings_path) {
@@ -122,7 +133,7 @@ pub fn load_settings(paths: &RuntimePaths) -> AppSettings {
 pub fn store_settings(paths: &RuntimePaths, settings: &AppSettings) -> io::Result<()> {
     let text = serde_json::to_string_pretty(settings)
         .map_err(|e| io::Error::other(format!("settings 序列化失败：{e}")))?;
-    let tmp = paths.settings_path.with_extension("json.tmp");
+    let tmp = unique_tmp_path(&paths.settings_path);
     fs::write(&tmp, text)?;
     fs::rename(&tmp, &paths.settings_path)?;
     Ok(())
@@ -188,7 +199,7 @@ pub fn token_new() -> String {
 pub fn write_bridge_json(paths: &RuntimePaths, discovery: &BridgeDiscovery) -> io::Result<()> {
     let text = serde_json::to_string_pretty(discovery)
         .map_err(|e| io::Error::other(format!("bridge.json 序列化失败：{e}")))?;
-    let tmp = paths.bridge_json_path.with_extension("json.tmp");
+    let tmp = unique_tmp_path(&paths.bridge_json_path);
     fs::write(&tmp, text)?;
     fs::rename(&tmp, &paths.bridge_json_path)?;
     Ok(())
@@ -209,6 +220,15 @@ pub fn read_bridge_json(paths: &RuntimePaths) -> Option<BridgeDiscovery> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unique_tmp_path_never_repeats() {
+        let target = std::path::Path::new("data/settings.json");
+        let a = unique_tmp_path(target);
+        let b = unique_tmp_path(target);
+        assert_ne!(a, b, "并发双写共享 tmp 名会互删（rename ENOENT）");
+        assert_eq!(a.parent(), target.parent());
+    }
 
     #[test]
     fn settings_roundtrip_and_defaults() {

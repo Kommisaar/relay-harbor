@@ -65,7 +65,11 @@ pub fn run() {
             show_main_window(app);
         }))
         .invoke_handler(specta.invoke_handler())
-        .setup(|app| {
+        .setup(move |app| {
+            // tauri-specta 事件注册表：DataChangedEvent/ExportProgressEvent 的
+            // emit 依赖 state 中的 EventRegistry，缺失即 panic——MCP 写工具
+            // 真机响应挂起的根因（2026-09-04 冒烟定位：工作线程任务静默死亡）。
+            specta.mount_events(app);
             // 组合根装配（ADR-001）：数据库打开 + 迁移 + 日志初始化。
             // 失败即 fail-fast（数据目录不可用属启动期硬错误）。
             let state = tauri::async_runtime::block_on(state::AppState::init())

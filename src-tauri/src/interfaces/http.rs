@@ -206,13 +206,21 @@ impl McpServer {
     /// ADR-006：写工具成功 → 先发射 data-changed → 再返回
     fn emit_changed(&self, summary: &crate::services::write::ChangeSummary) {
         if let Some(app) = &self.app {
-            let _ = DataChangedEvent {
+            let app = app.clone();
+            let event = DataChangedEvent {
                 project_id: summary.project_id.to_string(),
                 kinds: summary.kinds.clone(),
                 revision: summary.revision,
                 code: summary.code.clone(),
-            }
-            .emit(app);
+            };
+            // WebView2 的 ExecuteScript 必须在创建线程（主线程）执行；MCP 工具
+            // 处理任务在 async_runtime 工作线程，直呼 emit 会挂死写工具响应
+            //（真机冒烟 2026-09-04 实证，测试 app=None 故未复现）。
+            // run_on_main_thread 仅入队，不占工具响应路径。
+            let handle = app.clone();
+            let _ = app.run_on_main_thread(move || {
+                let _ = event.emit(&handle);
+            });
         }
     }
 
