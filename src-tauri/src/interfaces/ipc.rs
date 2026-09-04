@@ -10,7 +10,7 @@ pub struct AppVersionResult {
     pub version: String,
 }
 
-/// 非业务信息命令：应用版本（UI 关于页显示）。不属 12 个业务只读命令。
+/// 非业务信息命令：应用版本（UI 关于页显示）。不属 15 个业务只读命令。
 #[tauri::command]
 #[specta::specta]
 pub fn app_version() -> AppVersionResult {

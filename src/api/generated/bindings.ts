@@ -6,7 +6,7 @@
 
 export const commands = {
 /**
- * 非业务信息命令：应用版本（UI 关于页显示）。不属 12 个业务只读命令。
+ * 非业务信息命令：应用版本（UI 关于页显示）。不属 15 个业务只读命令。
  */
 async appVersion() : Promise<AppVersionResult> {
     return await TAURI_INVOKE("app_version");
@@ -29,7 +29,12 @@ dataChangedEvent: "data-changed-event"
 /** user-defined types **/
 
 export type AppVersionResult = { version: string }
-export type ChangeKind = "item" | "relation" | "task" | "project"
+export type ChangeKind = "item" | "relation" | "task" | "project" | 
+/**
+ * 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）。
+ * rename_all=lowercase 会产 "projectdoc"，契约线名带下划线，故显式 rename。
+ */
+"project_doc"
 /**
  * 失效信号（不承载数据）：projectId 定位失效粒度，前端按项目前缀失效查询。
  */

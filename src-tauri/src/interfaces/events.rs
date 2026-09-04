@@ -14,6 +14,10 @@ pub enum ChangeKind {
     Relation,
     Task,
     Project,
+    /// 项目级文档写入（DOM-009，2026-09-04 修订循环 +project_doc）。
+    /// rename_all=lowercase 会产 "projectdoc"，契约线名带下划线，故显式 rename。
+    #[serde(rename = "project_doc")]
+    ProjectDoc,
 }
 
 /// 失效信号（不承载数据）：projectId 定位失效粒度，前端按项目前缀失效查询。

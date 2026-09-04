@@ -6,6 +6,7 @@ pub mod changeset;
 pub mod error;
 pub mod item;
 pub mod ports;
+pub mod project;
 pub mod relation;
 pub mod revision;
 pub mod snapshot;

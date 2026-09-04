@@ -5,11 +5,13 @@
 //!
 //! 设计基线见 `docs/design/`（00～06 已确认，2026-08-27）。
 
-mod domain;
-mod infra;
-mod interfaces;
-mod services;
-mod state;
+// 层模块 pub：tests/ 集成测试经公共 API 断言领域规则（迁移矩阵等），
+// 同时使层内 pub 项计为已用（私有 mod 的 pub 项会触发 dead_code）。
+pub mod domain;
+pub mod infra;
+pub mod interfaces;
+pub mod services;
+pub mod state;
 
 use tauri_specta::{collect_commands, collect_events, Builder};
 
